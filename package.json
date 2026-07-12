@@ -1,0 +1,14 @@
+{
+	"name": "ahme",
+	"version": "1.0.0",
+	"description": "AH_ME - espace communautaire 3D multijoueur",
+	"private": true,
+	"scripts": {
+		"format": "prettier --write \"client/**/*.{ts,tsx,css,json}\" \"server/src/**/*.js\"",
+		"format:check": "prettier --check \"client/**/*.{ts,tsx,css,json}\" \"server/src/**/*.js\""
+	},
+	"license": "MIT",
+	"devDependencies": {
+		"prettier": "^3.6.0"
+	}
+}

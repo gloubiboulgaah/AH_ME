@@ -1,0 +1,47 @@
+# Dépendances
+node_modules/
+package-lock.json
+
+# Next.js
+.next/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Environnement
+.env
+.env.local
+.env.*.local
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Build
+dist/
+build/
+*.min.js
+*.min.css
+
+# Backup
+*.bak
+*-old.*
+README-old.md
+
+# Tests
+coverage/
+.nyc_output/
