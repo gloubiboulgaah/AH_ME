@@ -6,16 +6,18 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, type User } from '@/lib/api';
+import JoinScreen from '@/components/JoinScreen';
 
 export default function HomePage() {
 	const router = useRouter();
+
 	const [user, setUser] = useState<User | null>(null);
 	const [checked, setChecked] = useState(false);
 
 	useEffect(() => {
 		api.me()
 			.then((data) => setUser(data.user))
-			.catch(() => {})
+			.catch(() => setUser(null))
 			.finally(() => setChecked(true));
 	}, []);
 
@@ -24,40 +26,69 @@ export default function HomePage() {
 		setUser(null);
 	};
 
+	const handleGuestJoin = (username: string) => {
+		localStorage.setItem('ahme_guest_username', username);
+
+		console.log('Événement rejoindre mock :', {
+			username,
+		});
+
+		router.push(`/play?username=${encodeURIComponent(username)}`);
+	};
+
+	if (!checked) {
+		return (
+			<main className="loading-screen">
+				<p>Chargement...</p>
+			</main>
+		);
+	}
+
+	if (!user) {
+		return (
+			<>
+				<JoinScreen onJoin={handleGuestJoin} />
+
+				<div className="guest-auth-links">
+					<p>Tu as déjà un compte ?</p>
+
+					<Link href="/login">Connexion</Link>
+
+					<span>·</span>
+
+					<Link href="/register">Inscription</Link>
+				</div>
+			</>
+		);
+	}
+
 	return (
 		<main className="landing">
 			<h1>AH_ME</h1>
+
 			<p>Espace communautaire 3D multijoueur</p>
 
-			{!checked ? null : user ? (
-				<div className="landing-actions">
-					<p>
-						Connecte en tant que <strong>{user.username}</strong>
-					</p>
-					<button
-						className="btn"
-						onClick={() => router.push('/play')}>
-						Jouer
-					</button>
-					<button className="btn btn-ghost" onClick={logout}>
-						Deconnexion
-					</button>
-				</div>
-			) : (
-				<div className="landing-actions">
-					<button
-						className="btn"
-						onClick={() => router.push('/play')}>
-						Jouer en invite
-					</button>
-					<Link className="btn btn-ghost" href="/login">
-						Connexion
-					</Link>
-					<Link className="btn btn-ghost" href="/register">
-						Inscription
-					</Link>
-				</div>
-			)}
+			<div className="landing-actions">
+				<p>
+					Connecté en tant que <strong>{user.username}</strong>
+				</p>
+
+				<button
+					className="btn"
+					type="button"
+					onClick={() => router.push('/play')}
+				>
+					Jouer
+				</button>
+
+				<button
+					className="btn btn-ghost"
+					type="button"
+					onClick={logout}
+				>
+					Déconnexion
+				</button>
+			</div>
 		</main>
 	);
 }
