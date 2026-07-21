@@ -7,32 +7,57 @@ const MAX_LEN = 300;
 function attach(io, socket) {
 	socket.on('chatMessage', (message) => {
 		const player = players.get(socket.id);
-		if (!player || typeof message !== 'string') return;
+
+		if (!player || typeof message !== 'string') {
+			return;
+		}
+
+		const normalizedMessage = message.trim();
+
+		if (!normalizedMessage) {
+			return;
+		}
 
 		io.emit('chatMessage', {
 			playerId: socket.id,
 			username: player.username,
-			message: message.slice(0, MAX_LEN),
+			message: normalizedMessage.slice(0, MAX_LEN),
 			timestamp: Date.now(),
 		});
 	});
 
 	socket.on('privateMessage', (data) => {
 		const sender = players.get(socket.id);
-		if (!sender || !data || !data.to || typeof data.message !== 'string')
+
+		if (
+			!sender ||
+			!data ||
+			!data.to ||
+			typeof data.message !== 'string'
+		) {
 			return;
+		}
+
+		const normalizedMessage = data.message.trim();
+
+		if (!normalizedMessage) {
+			return;
+		}
 
 		io.to(data.to).emit('privateMessage', {
 			from: socket.id,
 			fromUsername: sender.username,
-			message: data.message.slice(0, MAX_LEN),
+			message: normalizedMessage.slice(0, MAX_LEN),
 			timestamp: Date.now(),
 		});
 	});
 
 	socket.on('emote', (data) => {
 		const sender = players.get(socket.id);
-		if (!sender || !data || !data.to || !data.type) return;
+
+		if (!sender || !data || !data.to || !data.type) {
+			return;
+		}
 
 		io.to(data.to).emit('emote', {
 			from: socket.id,
@@ -43,4 +68,6 @@ function attach(io, socket) {
 	});
 }
 
-module.exports = { attach };
+module.exports = {
+	attach,
+};

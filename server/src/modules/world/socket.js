@@ -23,9 +23,7 @@ function attach(io, socket) {
 		const player = {
 			id: socket.id,
 			userId: user ? user.id : null,
-			username: user
-				? user.username
-				: `Guest_${Math.floor(Math.random() * 1000)}`,
+			username: socket.data.username,
 			x: saved ? saved.x : 0,
 			y: saved ? saved.y : 5,
 			z: saved ? saved.z : 0,

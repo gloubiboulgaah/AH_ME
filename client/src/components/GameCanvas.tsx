@@ -10,6 +10,7 @@ import { InteractionManager } from '@/game/interactions';
 import type { ChatMessage } from '@/game/types';
 import { SOCKET_URL } from '@/lib/config';
 import ChatBox from './ChatBox';
+import { api } from '@/lib/api';
 
 const MAX_MESSAGES = 50;
 
@@ -28,67 +29,95 @@ export default function GameCanvas() {
 	const [username, setUsername] = useState('');
 
 	useEffect(() => {
-		if (!containerRef.current) return;
+		let engine: GameEngine | null = null;
+		let network: NetworkClient | null = null;
+		let interactions: InteractionManager | null = null;
+		let cancelled = false;
 
-		const usernameFromUrl = searchParams.get('username');
-		const usernameFromStorage = localStorage.getItem(
-			'ahme_guest_username',
-		);
+		const startGame = async () => {
+			if (!containerRef.current) return;
 
-		const guestUsername =
-			usernameFromUrl?.trim() || usernameFromStorage?.trim();
+			let authenticatedUsername: string | null = null;
 
-		/*
-		 * Si aucun pseudo n'existe, l'utilisateur doit revenir
-		 * sur l'écran d'accueil pour en choisir un.
-		 */
-		if (!guestUsername) {
-			router.replace('/');
-			return;
-		}
+			try {
+				const data = await api.me();
+				authenticatedUsername =
+					data.user?.username ?? null;
+			} catch {
+				authenticatedUsername = null;
+			}
 
-		localStorage.setItem('ahme_guest_username', guestUsername);
-		setUsername(guestUsername);
+			const storedGuestUsername =
+				localStorage
+					.getItem('ahme_guest_username')
+					?.trim() || null;
 
-		console.log('Pseudo utilisé dans le jeu :', guestUsername);
+			const effectiveUsername =
+				authenticatedUsername || storedGuestUsername;
 
-		const engine = new GameEngine(containerRef.current, {
-			joyBase: joyBaseRef.current,
-			joyStick: joyStickRef.current,
-		});
+			// Impossible de jouer sans compte ni pseudo invité.
+			if (!effectiveUsername || cancelled) {
+				window.location.href = '/';
+				return;
+			}
 
-		const network = new NetworkClient(engine, {
-			url: SOCKET_URL,
-			onStatus: setConnected,
-			onChat: (msg) =>
-				setMessages((prev) => [
-					...prev.slice(-MAX_MESSAGES + 1),
-					msg,
-				]),
-		});
+			engine = new GameEngine(containerRef.current, {
+				joyBase: joyBaseRef.current,
+				joyStick: joyStickRef.current,
+			});
 
-		networkRef.current = network;
-		engine.network = network;
+			network = new NetworkClient(engine, {
+				url: SOCKET_URL,
 
-		const interactions = new InteractionManager(engine);
-		engine.interactions = interactions;
+				// Aucun pseudo libre n'est envoyé pour un compte connecté.
+				// Le serveur retrouvera le compte grâce au cookie.
+				guestUsername: authenticatedUsername
+					? undefined
+					: storedGuestUsername || undefined,
 
-		const joyContainer = joyContainerRef.current;
+				onStatus: setConnected,
 
-		if (
-			('ontouchstart' in window ||
-				navigator.maxTouchPoints > 0) &&
-			joyContainer
-		) {
-			joyContainer.classList.add('touch-enabled');
-		}
+				onChat: (message) => {
+					setMessages((previousMessages) => [
+						...previousMessages.slice(
+							-MAX_MESSAGES + 1
+						),
+						message,
+					]);
+				},
+			});
+
+			networkRef.current = network;
+			engine.network = network;
+
+			interactions = new InteractionManager(engine);
+			engine.interactions = interactions;
+
+			const joyContainer = joyContainerRef.current;
+
+			if (
+				('ontouchstart' in window ||
+					navigator.maxTouchPoints > 0) &&
+				joyContainer
+			) {
+				joyContainer.classList.add(
+					'touch-enabled'
+				);
+			}
+		};
+
+		void startGame();
 
 		return () => {
-			interactions.destroy();
-			network.destroy();
-			engine.destroy();
+			cancelled = true;
+
+			interactions?.destroy();
+			network?.destroy();
+			engine?.destroy();
+
+			networkRef.current = null;
 		};
-	}, [router, searchParams]);
+	}, []);
 
 	const sendChat = (msg: string) => {
 		networkRef.current?.sendChatMessage(msg);

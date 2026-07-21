@@ -16,9 +16,22 @@ export default function HomePage() {
 
 	useEffect(() => {
 		api.me()
-			.then((data) => setUser(data.user))
-			.catch(() => setUser(null))
-			.finally(() => setChecked(true));
+			.then((data) => {
+				setUser(data.user);
+
+				// Un compte connecté est prioritaire sur le pseudo invité.
+				if (data.user) {
+					localStorage.removeItem(
+						'ahme_guest_username'
+					);
+				}
+			})
+			.catch(() => {
+				setUser(null);
+			})
+			.finally(() => {
+				setChecked(true);
+			});
 	}, []);
 
 	const logout = async () => {
@@ -27,13 +40,18 @@ export default function HomePage() {
 	};
 
 	const handleGuestJoin = (username: string) => {
-		localStorage.setItem('ahme_guest_username', username);
+		const normalizedUsername = username.trim();
+
+		localStorage.setItem(
+			'ahme_guest_username',
+			normalizedUsername
+		);
 
 		console.log('Événement rejoindre mock :', {
-			username,
+			username: normalizedUsername,
 		});
 
-		router.push(`/play?username=${encodeURIComponent(username)}`);
+		router.push('/play');
 	};
 
 	if (!checked) {
