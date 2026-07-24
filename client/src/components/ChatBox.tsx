@@ -2,7 +2,12 @@
 
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+	useEffect,
+	useRef,
+	useState,
+	type FormEvent,
+} from 'react';
 import type { ChatMessage } from '@/game/types';
 
 interface ChatBoxProps {
@@ -10,44 +15,114 @@ interface ChatBoxProps {
 	onSend: (message: string) => void;
 }
 
-// chat global minimal, refonte prevue cote UI
-export default function ChatBox({ messages, onSend }: ChatBoxProps) {
+function formatMessageTime(timestamp: number): string {
+	return new Intl.DateTimeFormat('fr-FR', {
+		hour: '2-digit',
+		minute: '2-digit',
+	}).format(new Date(timestamp));
+}
+
+export default function ChatBox({
+	messages,
+	onSend,
+}: ChatBoxProps) {
 	const [text, setText] = useState('');
 	const listRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
-		if (listRef.current) {
-			listRef.current.scrollTop = listRef.current.scrollHeight;
-		}
+		const messageList = listRef.current;
+
+		if (!messageList) return;
+
+		messageList.scrollTo({
+			top: messageList.scrollHeight,
+			behavior: 'smooth',
+		});
 	}, [messages]);
 
-	const send = (e: FormEvent) => {
-		e.preventDefault();
-		const msg = text.trim();
-		if (!msg) return;
-		onSend(msg);
+	const send = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+
+		const message = text.trim();
+
+		if (!message) return;
+
+		onSend(message);
 		setText('');
 	};
 
 	return (
-		<div className="chat-box">
-			<div className="chat-box-messages" ref={listRef}>
-				{messages.map((m, i) => (
-					<div key={i} className="chat-box-line">
-						<strong>{m.username}:</strong> {m.message}
-					</div>
-				))}
+		<section
+			className="chat-box"
+			aria-label="Chat global"
+		>
+			<div
+				className="chat-box-messages"
+				ref={listRef}
+				aria-live="polite"
+			>
+				{messages.length === 0 ? (
+					<p className="chat-box-empty">
+						Aucun message pour le moment.
+					</p>
+				) : (
+					messages.map((message, index) => (
+						<article
+							key={`${message.playerId}-${message.timestamp}-${index}`}
+							className="chat-box-line"
+						>
+							<header className="chat-box-line-header">
+								<strong>
+									{message.username}
+								</strong>
+
+								<time
+									dateTime={new Date(
+										message.timestamp
+									).toISOString()}
+								>
+									{formatMessageTime(
+										message.timestamp
+									)}
+								</time>
+							</header>
+
+							<p>{message.message}</p>
+						</article>
+					))
+				)}
 			</div>
-			<form className="chat-box-form" onSubmit={send}>
+
+			<form
+				className="chat-box-form"
+				onSubmit={send}
+			>
+				<label
+					className="sr-only"
+					htmlFor="global-chat-message"
+				>
+					Écrire un message
+				</label>
+
 				<input
+					id="global-chat-message"
 					type="text"
 					value={text}
 					maxLength={300}
 					placeholder="Message..."
-					onChange={(e) => setText(e.target.value)}
+					autoComplete="off"
+					onChange={(event) =>
+						setText(event.target.value)
+					}
 				/>
-				<button type="submit">Envoyer</button>
+
+				<button
+					type="submit"
+					disabled={!text.trim()}
+				>
+					Envoyer
+				</button>
 			</form>
-		</div>
+		</section>
 	);
 }
