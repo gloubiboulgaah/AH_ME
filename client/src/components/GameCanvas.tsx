@@ -14,11 +14,13 @@ import ChatBubble, {
 	type ChatBubbleData,
 } from './ChatBubble';
 import { MOCK_CHAT_MESSAGES } from '@/mocks/chatMessages';
+import { useRouter } from 'next/navigation';
 
 const MAX_MESSAGES = 50;
 const MAX_BUBBLES = 10;
 
 export default function GameCanvas() {
+	const router = useRouter();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const joyContainerRef = useRef<HTMLDivElement>(null);
 	const joyBaseRef = useRef<HTMLDivElement>(null);
@@ -28,7 +30,7 @@ export default function GameCanvas() {
 
 	const [connected, setConnected] = useState(false);
 	const [messages, setMessages] =
-	useState<ChatMessage[]>(MOCK_CHAT_MESSAGES);
+		useState<ChatMessage[]>(MOCK_CHAT_MESSAGES);
 	const [bubbles, setBubbles] = useState<ChatBubbleData[]>([]);
 	const [username, setUsername] = useState('');
 
@@ -235,6 +237,7 @@ export default function GameCanvas() {
 
 	return (
 		<>
+
 			<div id="container" ref={containerRef} />
 
 			<div
@@ -263,6 +266,14 @@ export default function GameCanvas() {
 				<br />
 				E pour interagir, joystick sur mobile
 			</div>
+
+			<button
+				type="button"
+				className="btn avatar-customize-game-button"
+				onClick={() => router.push('/customize')}
+			>
+				Personnaliser mon avatar
+			</button>
 
 			<div
 				id="connection-status"
