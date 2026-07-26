@@ -2,25 +2,32 @@
 
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from 'react';
+import { useRouter } from 'next/navigation';
 import { GameEngine } from '@/game/engine';
 import { NetworkClient } from '@/game/network';
 import { InteractionManager } from '@/game/interactions';
 import type { ChatMessage } from '@/game/types';
 import { SOCKET_URL } from '@/lib/config';
 import { api } from '@/lib/api';
+import { MOCK_CHAT_MESSAGES } from '@/mocks/chatMessages';
+import DebugOverlay from '@/components/DebugOverlay';
 import ChatBox from './ChatBox';
 import ChatBubble, {
 	type ChatBubbleData,
 } from './ChatBubble';
-import { MOCK_CHAT_MESSAGES } from '@/mocks/chatMessages';
-import { useRouter } from 'next/navigation';
 
 const MAX_MESSAGES = 50;
 const MAX_BUBBLES = 10;
 
 export default function GameCanvas() {
 	const router = useRouter();
+
 	const containerRef = useRef<HTMLDivElement>(null);
 	const joyContainerRef = useRef<HTMLDivElement>(null);
 	const joyBaseRef = useRef<HTMLDivElement>(null);
@@ -31,32 +38,32 @@ export default function GameCanvas() {
 	const [connected, setConnected] = useState(false);
 	const [messages, setMessages] =
 		useState<ChatMessage[]>(MOCK_CHAT_MESSAGES);
-	const [bubbles, setBubbles] = useState<ChatBubbleData[]>([]);
+	const [bubbles, setBubbles] =
+		useState<ChatBubbleData[]>([]);
 	const [username, setUsername] = useState('');
+	const [wireframe, setWireframe] = useState(false);
 
-	const removeBubble = useCallback((bubbleId: string) => {
-		setBubbles((currentBubbles) =>
-			currentBubbles.filter(
-				(bubble) => bubble.id !== bubbleId
-			)
-		);
-	}, []);
+	const removeBubble = useCallback(
+		(bubbleId: string) => {
+			setBubbles((currentBubbles) =>
+				currentBubbles.filter(
+					(bubble) => bubble.id !== bubbleId,
+				),
+			);
+		},
+		[],
+	);
 
-	/*
-	 * Coordonnées temporaires mockées.
-	 *
-	 * Chaque joueur reçoit une position relativement stable,
-	 * calculée à partir de son identifiant.
-	 *
-	 * Cette fonction sera remplacée plus tard par la conversion
-	 * des coordonnées 3D de l'avatar en coordonnées écran.
-	 */
 	const getMockScreenPosition = (
-		playerId: string
+		playerId: string,
 	): { x: number; y: number } => {
 		let hash = 0;
 
-		for (let index = 0; index < playerId.length; index += 1) {
+		for (
+			let index = 0;
+			index < playerId.length;
+			index += 1
+		) {
 			hash =
 				(hash * 31 +
 					playerId.charCodeAt(index)) >>>
@@ -65,12 +72,12 @@ export default function GameCanvas() {
 
 		const availableWidth = Math.max(
 			window.innerWidth - 400,
-			200
+			200,
 		);
 
 		const availableHeight = Math.max(
 			window.innerHeight - 350,
-			180
+			180,
 		);
 
 		return {
@@ -84,7 +91,7 @@ export default function GameCanvas() {
 
 	const addChatBubble = (message: ChatMessage) => {
 		const position = getMockScreenPosition(
-			message.playerId
+			message.playerId,
 		);
 
 		bubbleCounterRef.current += 1;
@@ -99,10 +106,6 @@ export default function GameCanvas() {
 		};
 
 		setBubbles((currentBubbles) => {
-			/*
-			 * Décale légèrement les bulles déjà présentes
-			 * pour le même joueur afin qu'elles restent visibles.
-			 */
 			const movedBubbles = currentBubbles.map(
 				(currentBubble) => {
 					if (
@@ -116,12 +119,12 @@ export default function GameCanvas() {
 						...currentBubble,
 						y: currentBubble.y - 70,
 					};
-				}
+				},
 			);
 
 			return [
 				...movedBubbles.slice(
-					-(MAX_BUBBLES - 1)
+					-(MAX_BUBBLES - 1),
 				),
 				bubble,
 			];
@@ -131,11 +134,14 @@ export default function GameCanvas() {
 	useEffect(() => {
 		let engine: GameEngine | null = null;
 		let network: NetworkClient | null = null;
-		let interactions: InteractionManager | null = null;
+		let interactions: InteractionManager | null =
+			null;
 		let cancelled = false;
 
 		const startGame = async () => {
-			if (!containerRef.current) return;
+			if (!containerRef.current) {
+				return;
+			}
 
 			let authenticatedUsername: string | null =
 				null;
@@ -170,19 +176,16 @@ export default function GameCanvas() {
 				{
 					joyBase: joyBaseRef.current,
 					joyStick: joyStickRef.current,
-				}
+				},
 			);
 
 			network = new NetworkClient(engine, {
 				url: SOCKET_URL,
-
 				guestUsername: authenticatedUsername
 					? undefined
 					: storedGuestUsername ||
 						undefined,
-
 				onStatus: setConnected,
-
 				onChat: (message) => {
 					addChatBubble(message);
 				},
@@ -203,7 +206,7 @@ export default function GameCanvas() {
 				joyContainer
 			) {
 				joyContainer.classList.add(
-					'touch-enabled'
+					'touch-enabled',
 				);
 			}
 		};
@@ -224,21 +227,40 @@ export default function GameCanvas() {
 	const sendChat = (message: string) => {
 		const mockMessage: ChatMessage = {
 			playerId: 'mock-current-user',
-			username: username,
+			username,
 			message,
 			timestamp: Date.now(),
 		};
 
 		setMessages((previousMessages) => [
-			...previousMessages.slice(-MAX_MESSAGES + 1),
+			...previousMessages.slice(
+				-MAX_MESSAGES + 1,
+			),
 			mockMessage,
 		]);
 	};
 
 	return (
 		<>
+			<div
+				id="container"
+				ref={containerRef}
+			/>
 
-			<div id="container" ref={containerRef} />
+			<DebugOverlay
+				enabled
+				wireframe={wireframe}
+				onWireframeChange={setWireframe}
+				infos={{
+					'Chunks chargés': 4,
+					'Joueurs connectés': connected
+						? 1
+						: 0,
+					'Position X': 0,
+					'Position Z': 0,
+					'Socket connecté': connected,
+				}}
+			/>
 
 			<div
 				className="chat-bubble-overlay"
@@ -253,38 +275,44 @@ export default function GameCanvas() {
 				))}
 			</div>
 
-			<div className="hint">
-				{username && (
-					<>
-						Pseudo :{' '}
-						<strong>{username}</strong>
-						<br />
-					</>
-				)}
+			<div className="game-status">
+				<div className="hint">
+					{username && (
+						<>
+							Pseudo :{' '}
+							<strong>{username}</strong>
+							<br />
+						</>
+					)}
 
-				Flèches / WASD pour se déplacer
-				<br />
-				E pour interagir, joystick sur mobile
+					Flèches / WASD pour se déplacer
+					<br />
+					E pour interagir, joystick sur mobile
+				</div>
+
+				<div
+					id="connection-status"
+					className={
+						connected
+							? 'is-on'
+							: 'is-off'
+					}
+				>
+					{connected
+						? 'Connecté'
+						: 'Déconnecté'}
+				</div>
 			</div>
 
 			<button
 				type="button"
 				className="btn avatar-customize-game-button"
-				onClick={() => router.push('/customize')}
+				onClick={() =>
+					router.push('/customize')
+				}
 			>
 				Personnaliser mon avatar
 			</button>
-
-			<div
-				id="connection-status"
-				className={
-					connected ? 'is-on' : 'is-off'
-				}
-			>
-				{connected
-					? 'Connecté'
-					: 'Déconnecté'}
-			</div>
 
 			<ChatBox
 				messages={messages}
