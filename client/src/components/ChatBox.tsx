@@ -6,7 +6,7 @@ import {
 	useEffect,
 	useRef,
 	useState,
-	type FormEvent,
+	type SyntheticEvent,
 } from 'react';
 import type { ChatMessage } from '@/game/types';
 
@@ -32,7 +32,9 @@ export default function ChatBox({
 	useEffect(() => {
 		const messageList = listRef.current;
 
-		if (!messageList) return;
+		if (!messageList) {
+			return;
+		}
 
 		messageList.scrollTo({
 			top: messageList.scrollHeight,
@@ -40,12 +42,16 @@ export default function ChatBox({
 		});
 	}, [messages]);
 
-	const send = (event: FormEvent<HTMLFormElement>) => {
+	const send = (
+		event: SyntheticEvent<HTMLFormElement, SubmitEvent>,
+	) => {
 		event.preventDefault();
 
 		const message = text.trim();
 
-		if (!message) return;
+		if (!message) {
+			return;
+		}
 
 		onSend(message);
 		setText('');
@@ -78,11 +84,11 @@ export default function ChatBox({
 
 								<time
 									dateTime={new Date(
-										message.timestamp
+										message.timestamp,
 									).toISOString()}
 								>
 									{formatMessageTime(
-										message.timestamp
+										message.timestamp,
 									)}
 								</time>
 							</header>
@@ -105,7 +111,9 @@ export default function ChatBox({
 				</label>
 
 				<input
+					className="input chat-box-input"
 					id="global-chat-message"
+					name="global-chat-message"
 					type="text"
 					value={text}
 					maxLength={300}
@@ -117,6 +125,7 @@ export default function ChatBox({
 				/>
 
 				<button
+					className="btn chat-box-submit"
 					type="submit"
 					disabled={!text.trim()}
 				>

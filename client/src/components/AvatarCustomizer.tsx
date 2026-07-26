@@ -91,10 +91,17 @@ export default function AvatarCustomizer({
 
 	return (
 		<main className="avatar-customization-page">
-			<div className="avatar-customization-background avatar-customization-background-one" />
-			<div className="avatar-customization-background avatar-customization-background-two" />
+			<div
+				className="avatar-customization-background avatar-customization-background-one"
+				aria-hidden="true"
+			/>
 
-			<section className="avatar-customization-card">
+			<div
+				className="avatar-customization-background avatar-customization-background-two"
+				aria-hidden="true"
+			/>
+
+			<section className="panel avatar-customization-card">
 				<header className="avatar-customization-header">
 					<p className="join-eyebrow">
 						Personnalisation
@@ -212,7 +219,7 @@ export default function AvatarCustomizer({
 					</section>
 
 					<section
-						className="avatar-preview-panel"
+						className="panel avatar-preview-panel"
 						aria-label="Aperçu de l'avatar"
 					>
 						<h2>Aperçu</h2>

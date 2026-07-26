@@ -1,0 +1,79 @@
+/** @format */
+
+:root {
+	/* Couleurs principales */
+	--color-primary: #667eea;
+	--color-primary-dark: #764ba2;
+
+	--color-primary-hover: #7185ee;
+	--color-primary-active: #5b6fd1;
+
+	--color-primary-focus: rgb(102 126 234 / 35%);
+	--color-primary-focus-soft: rgb(102 126 234 / 20%);
+
+	/* Arrière-plans */
+	--color-background: #11131a;
+	--color-surface: #1b1e28;
+	--color-surface-light: #252936;
+	--color-overlay: rgb(10 12 18 / 75%);
+
+	/* Texte */
+	--color-text: #ffffff;
+	--color-text-muted: #aeb4c2;
+	--color-text-dark: #171821;
+
+	/* États */
+	--color-success: #3fbd75;
+	--color-danger: #e05252;
+	--color-danger-hover: #c94343;
+	--color-danger-focus-soft: rgb(224 82 82 / 20%);
+	--color-warning: #e9ae45;
+
+	/* Bordures */
+	--color-border: #353a49;
+	--color-border-light: #4a5061;
+
+	/* Typographie */
+	--font-family-base: Arial, Helvetica, sans-serif;
+
+	--font-size-xs: 0.75rem;
+	--font-size-sm: 0.875rem;
+	--font-size-md: 1rem;
+	--font-size-lg: 1.25rem;
+	--font-size-xl: 1.75rem;
+	--font-size-title: 2.5rem;
+
+	--font-weight-normal: 400;
+	--font-weight-medium: 500;
+	--font-weight-semibold: 600;
+	--font-weight-bold: 700;
+
+	/* Espacements */
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-5: 1.5rem;
+	--space-6: 2rem;
+	--space-7: 3rem;
+
+	/* Bordures arrondies */
+	--radius-sm: 0.375rem;
+	--radius-md: 0.625rem;
+	--radius-lg: 1rem;
+	--radius-round: 999px;
+
+	/* Ombres */
+	--shadow-sm: 0 2px 8px rgb(0 0 0 / 20%);
+	--shadow-md: 0 8px 24px rgb(0 0 0 / 30%);
+	--shadow-lg: 0 16px 40px rgb(0 0 0 / 40%);
+
+	/* Transitions */
+	--transition-fast: 150ms ease;
+	--transition-normal: 250ms ease;
+
+	/* Tailles */
+	--content-width-sm: 28rem;
+	--content-width-md: 45rem;
+	--content-width-lg: 75rem;
+}

@@ -1,6 +1,12 @@
+/** @format */
+
 'use client';
 
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import {
+	useState,
+	type ChangeEvent,
+	type SubmitEventHandler,
+} from 'react';
 
 const MIN_USERNAME_LENGTH = 3;
 const MAX_USERNAME_LENGTH = 20;
@@ -9,10 +15,13 @@ type JoinScreenProps = {
 	onJoin: (username: string) => void;
 };
 
-export default function JoinScreen({ onJoin }: JoinScreenProps) {
+export default function JoinScreen({
+	onJoin,
+}: JoinScreenProps) {
 	const [username, setUsername] = useState('');
 	const [error, setError] = useState('');
-	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [isSubmitting, setIsSubmitting] =
+		useState(false);
 
 	const validateUsername = (value: string): string => {
 		const trimmedUsername = value.trim();
@@ -32,11 +41,14 @@ export default function JoinScreen({ onJoin }: JoinScreenProps) {
 		return '';
 	};
 
-	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+	const handleSubmit: SubmitEventHandler<HTMLFormElement> = (
+		event,
+	) => {
 		event.preventDefault();
 
 		const trimmedUsername = username.trim();
-		const validationError = validateUsername(trimmedUsername);
+		const validationError =
+			validateUsername(trimmedUsername);
 
 		if (validationError) {
 			setError(validationError);
@@ -63,28 +75,50 @@ export default function JoinScreen({ onJoin }: JoinScreenProps) {
 
 	return (
 		<main className="join-page">
-			<div className="join-background-shape join-background-shape-one" />
-			<div className="join-background-shape join-background-shape-two" />
+			<div
+				className="join-background-shape join-background-shape-one"
+				aria-hidden="true"
+			/>
 
-			<section className="join-card">
-				<div className="join-logo" aria-hidden="true">
+			<div
+				className="join-background-shape join-background-shape-two"
+				aria-hidden="true"
+			/>
+
+			<section className="panel join-card">
+				<div
+					className="join-logo"
+					aria-hidden="true"
+				>
 					<span>AH</span>
 					<span>ME</span>
 				</div>
 
-				<p className="join-eyebrow">Espace communautaire 3D</p>
+				<p className="join-eyebrow">
+					Espace communautaire 3D
+				</p>
 
 				<h1>Entre dans le monde</h1>
 
 				<p className="join-description">
-					Choisis un pseudo pour rejoindre les autres joueurs et commencer à
-					explorer!
+					Choisis un pseudo pour rejoindre les autres
+					joueurs et commencer à explorer !
 				</p>
 
-				<form className="join-form" onSubmit={handleSubmit} noValidate>
-					<label htmlFor="username">Ton pseudo</label>
+				<form
+					className="join-form"
+					onSubmit={handleSubmit}
+					noValidate
+				>
+					<label
+						className="input-label"
+						htmlFor="username"
+					>
+						Ton pseudo
+					</label>
 
 					<input
+						className="input"
 						id="username"
 						name="username"
 						type="text"
@@ -96,7 +130,9 @@ export default function JoinScreen({ onJoin }: JoinScreenProps) {
 						autoComplete="nickname"
 						aria-invalid={Boolean(error)}
 						aria-describedby={
-							error ? 'username-error' : 'username-help'
+							error
+								? 'username-error'
+								: 'username-help'
 						}
 						disabled={isSubmitting}
 					/>
@@ -111,14 +147,18 @@ export default function JoinScreen({ onJoin }: JoinScreenProps) {
 								{error}
 							</p>
 						) : (
-							<p id="username-help" className="join-help">
-								Entre {MIN_USERNAME_LENGTH} et {MAX_USERNAME_LENGTH}{' '}
-								caractères
+							<p
+								id="username-help"
+								className="join-help"
+							>
+								Entre {MIN_USERNAME_LENGTH} et{' '}
+								{MAX_USERNAME_LENGTH} caractères
 							</p>
 						)}
 
 						<span>
-							{username.trim().length}/{MAX_USERNAME_LENGTH}
+							{username.trim().length}/
+							{MAX_USERNAME_LENGTH}
 						</span>
 					</div>
 
@@ -127,13 +167,11 @@ export default function JoinScreen({ onJoin }: JoinScreenProps) {
 						type="submit"
 						disabled={isSubmitting}
 					>
-						{isSubmitting ? 'Connexion...' : 'Rejoindre'}
+						{isSubmitting
+							? 'Connexion...'
+							: 'Rejoindre'}
 					</button>
 				</form>
-
-				{/* <p className="join-fallback">
-					Tu pourras également te connecter avec un compte.
-				</p> */}
 			</section>
 		</main>
 	);

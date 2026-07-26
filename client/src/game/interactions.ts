@@ -10,8 +10,9 @@ interface NearbyPlayer {
 	distance: number;
 }
 
-// menu d'interactions entre joueurs (touche E)
-// porte tel quel depuis la version vanilla, TODO passer en composants react
+// Menu d’interactions entre joueurs (touche E).
+// Conservé depuis la version vanilla.
+// TODO : le convertir plus tard en composant React.
 export class InteractionManager {
 	engine: GameEngine;
 	interactionRadius = 50;
@@ -24,30 +25,45 @@ export class InteractionManager {
 
 	constructor(engine: GameEngine) {
 		this.engine = engine;
-
 		this.createUI();
 		this.bindEvents();
 	}
 
 	private createUI() {
 		const menu = document.createElement('div');
+
 		menu.id = 'interaction-menu';
-		menu.className = 'interaction-menu hidden';
+		menu.className = 'panel interaction-menu hidden';
+		menu.setAttribute('role', 'dialog');
+		menu.setAttribute('aria-modal', 'false');
+		menu.setAttribute('aria-labelledby', 'interaction-menu-title');
+
 		menu.innerHTML = `
-      <div class="interaction-menu-header">
-        <h3>Interactions disponibles</h3>
-        <button class="close-btn">&times;</button>
-      </div>
-      <div class="interaction-menu-content"></div>
-    `;
+			<div class="interaction-menu-header">
+				<h3 id="interaction-menu-title">Interactions disponibles</h3>
+
+				<button
+					class="btn btn-icon close-btn"
+					type="button"
+					aria-label="Fermer le menu d’interactions"
+				>
+					&times;
+				</button>
+			</div>
+
+			<div class="interaction-menu-content"></div>
+		`;
+
 		document.body.appendChild(menu);
 		this.interactionMenu = menu;
 
 		const indicator = document.createElement('div');
+
 		indicator.id = 'interaction-indicator';
 		indicator.className = 'interaction-indicator hidden';
 		indicator.innerHTML =
 			'<span class="indicator-text">Appuyez sur E pour interagir</span>';
+
 		document.body.appendChild(indicator);
 		this.interactionIndicator = indicator;
 
@@ -59,32 +75,40 @@ export class InteractionManager {
 	}
 
 	private bindEvents() {
-		const closeBtn = this.interactionMenu.querySelector('.close-btn');
-		closeBtn?.addEventListener('click', () => this.closeMenu());
+		const closeButton =
+			this.interactionMenu.querySelector<HTMLButtonElement>('.close-btn');
 
-		const onKeyDown = (e: KeyboardEvent) => {
+		closeButton?.addEventListener('click', () => this.closeMenu());
+
+		const onKeyDown = (event: KeyboardEvent) => {
 			const tag = document.activeElement?.tagName;
+
 			if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
-			if (e.key.toLowerCase() === 'e' && !this.isMenuOpen) {
+			if (event.key.toLowerCase() === 'e' && !this.isMenuOpen) {
 				if (this.nearbyPlayers.length > 0) this.openMenu();
-			} else if (e.key === 'Escape' && this.isMenuOpen) {
+			} else if (event.key === 'Escape' && this.isMenuOpen) {
 				this.closeMenu();
 			}
 		};
+
 		window.addEventListener('keydown', onKeyDown);
+
 		this.cleanups.push(() =>
-			window.removeEventListener('keydown', onKeyDown)
+			window.removeEventListener('keydown', onKeyDown),
 		);
 
-		this.interactionMenu.addEventListener('click', (e) => {
-			const target = e.target as HTMLElement;
-			if (target.classList.contains('interaction-option')) {
-				this.handleInteraction(
-					target.dataset.action || '',
-					target.dataset.playerId || ''
-				);
-			}
+		this.interactionMenu.addEventListener('click', (event) => {
+			const target = event.target as HTMLElement;
+			const option =
+				target.closest<HTMLButtonElement>('.interaction-option');
+
+			if (!option) return;
+
+			this.handleInteraction(
+				option.dataset.action ?? '',
+				option.dataset.playerId ?? '',
+			);
 		});
 	}
 
@@ -92,36 +116,46 @@ export class InteractionManager {
 		if (!this.engine.network || !this.engine.player) return;
 
 		this.nearbyPlayers = [];
-		const playerPos = this.engine.player.position;
+		const playerPosition = this.engine.player.position;
 
-		this.engine.network.otherPlayers.forEach((otherPlayer, playerId) => {
-			const distance = playerPos.distanceTo(otherPlayer.position);
-			if (distance <= this.interactionRadius) {
-				this.nearbyPlayers.push({
-					id: playerId,
-					mesh: otherPlayer,
-					username: otherPlayer.userData.username || '?',
-					distance,
-				});
-			}
-		});
+		this.engine.network.otherPlayers.forEach(
+			(otherPlayer, playerId) => {
+				const distance = playerPosition.distanceTo(
+					otherPlayer.position,
+				);
+
+				if (distance <= this.interactionRadius) {
+					this.nearbyPlayers.push({
+						id: playerId,
+						mesh: otherPlayer,
+						username: otherPlayer.userData.username || '?',
+						distance,
+					});
+				}
+			},
+		);
 
 		this.updateIndicator();
 	}
 
 	private updateIndicator() {
-		if (this.nearbyPlayers.length > 0 && !this.isMenuOpen) {
+		if (
+			this.nearbyPlayers.length > 0 &&
+			!this.isMenuOpen
+		) {
 			this.interactionIndicator.classList.remove('hidden');
+
 			const count = this.nearbyPlayers.length;
 			const text =
 				count === 1
-					? 'Appuyez sur E pour interagir avec ' +
-						this.nearbyPlayers[0].username
-					: 'Appuyez sur E pour interagir (' +
-						count +
-						' joueurs a proximite)';
+					? `Appuyez sur E pour interagir avec ${this.nearbyPlayers[0].username}`
+					: `Appuyez sur E pour interagir (${count} joueurs à proximité)`;
+
 			const label =
-				this.interactionIndicator.querySelector('.indicator-text');
+				this.interactionIndicator.querySelector(
+					'.indicator-text',
+				);
+
 			if (label) label.textContent = text;
 		} else {
 			this.interactionIndicator.classList.add('hidden');
@@ -132,27 +166,39 @@ export class InteractionManager {
 		if (this.nearbyPlayers.length === 0) return;
 
 		this.isMenuOpen = true;
-		const content = this.interactionMenu.querySelector(
-			'.interaction-menu-content'
-		);
+
+		const content =
+			this.interactionMenu.querySelector<HTMLDivElement>(
+				'.interaction-menu-content',
+			);
+
 		if (!content) return;
+
 		content.innerHTML = '';
 
 		if (this.nearbyPlayers.length === 1) {
-			content.innerHTML = this.generateSinglePlayerOptions(
-				this.nearbyPlayers[0]
-			);
+			content.innerHTML =
+				this.generateSinglePlayerOptions(
+					this.nearbyPlayers[0],
+				);
 		} else {
 			this.nearbyPlayers.forEach((player) => {
 				const section = document.createElement('div');
-				section.className = 'player-interaction-section';
+
+				section.className =
+					'player-interaction-section';
+
 				section.innerHTML = `
-          <div class="player-header">
-            <strong>${player.username}</strong>
-            <span class="distance">${Math.round(player.distance)} unites</span>
-          </div>
-          ${this.generateSinglePlayerOptions(player)}
-        `;
+					<div class="player-header">
+						<strong>${player.username}</strong>
+						<span class="distance">
+							${Math.round(player.distance)} unités
+						</span>
+					</div>
+
+					${this.generateSinglePlayerOptions(player)}
+				`;
+
 				content.appendChild(section);
 			});
 		}
@@ -161,19 +207,36 @@ export class InteractionManager {
 		this.interactionIndicator.classList.add('hidden');
 	}
 
-	private generateSinglePlayerOptions(player: NearbyPlayer) {
+	private generateSinglePlayerOptions(
+		player: NearbyPlayer,
+	) {
 		return `
-      <div class="interaction-options">
-        <button class="interaction-option" data-action="message" data-player-id="${player.id}">
-          <span class="icon">\u{1F4AC}</span>
-          <span class="label">Envoyer un message</span>
-        </button>
-        <button class="interaction-option" data-action="wave" data-player-id="${player.id}">
-          <span class="icon">\u{1F44B}</span>
-          <span class="label">Saluer</span>
-        </button>
-      </div>
-    `;
+			<div class="interaction-options">
+				<button
+					class="btn btn-ghost interaction-option"
+					type="button"
+					data-action="message"
+					data-player-id="${player.id}"
+				>
+					<span class="icon" aria-hidden="true">
+						\u{1F4AC}
+					</span>
+					<span class="label">Envoyer un message</span>
+				</button>
+
+				<button
+					class="btn btn-ghost interaction-option"
+					type="button"
+					data-action="wave"
+					data-player-id="${player.id}"
+				>
+					<span class="icon" aria-hidden="true">
+						\u{1F44B}
+					</span>
+					<span class="label">Saluer</span>
+				</button>
+			</div>
+		`;
 	}
 
 	closeMenu() {
@@ -183,11 +246,19 @@ export class InteractionManager {
 	}
 
 	handleInteraction(action: string, playerId: string) {
-		const player = this.nearbyPlayers.find((p) => p.id === playerId);
+		const player = this.nearbyPlayers.find(
+			(nearbyPlayer) => nearbyPlayer.id === playerId,
+		);
+
 		if (!player) return;
 
-		if (action === 'message') this.openMessageDialog(player);
-		if (action === 'wave') this.sendWave(player);
+		if (action === 'message') {
+			this.openMessageDialog(player);
+		}
+
+		if (action === 'wave') {
+			this.sendWave(player);
+		}
 
 		this.closeMenu();
 	}
@@ -196,47 +267,115 @@ export class InteractionManager {
 		document.getElementById('message-dialog')?.remove();
 
 		const dialog = document.createElement('div');
+
 		dialog.id = 'message-dialog';
-		dialog.className = 'message-dialog';
+		dialog.className = 'panel message-dialog';
+		dialog.setAttribute('role', 'dialog');
+		dialog.setAttribute('aria-modal', 'false');
+		dialog.setAttribute(
+			'aria-labelledby',
+			'message-dialog-title',
+		);
+
 		dialog.innerHTML = `
-      <div class="message-dialog-header">
-        <h3>Message a ${player.username}</h3>
-        <button class="close-btn">&times;</button>
-      </div>
-      <div class="message-dialog-body">
-        <div class="message-history" id="message-history-${player.id}"></div>
-        <div class="message-input-container">
-          <input type="text" class="message-input" placeholder="Tapez votre message..." maxlength="200">
-          <button class="send-btn">Envoyer</button>
-        </div>
-      </div>
-    `;
+			<div class="message-dialog-header">
+				<h3 id="message-dialog-title">
+					Message à ${player.username}
+				</h3>
+
+				<button
+					class="btn btn-icon close-btn"
+					type="button"
+					aria-label="Fermer la conversation"
+				>
+					&times;
+				</button>
+			</div>
+
+			<div class="message-dialog-body">
+				<div
+					class="message-history"
+					id="message-history-${player.id}"
+					aria-live="polite"
+				></div>
+
+				<div class="message-input-container">
+					<label
+						class="sr-only"
+						for="private-message-input-${player.id}"
+					>
+						Message pour ${player.username}
+					</label>
+
+					<input
+						id="private-message-input-${player.id}"
+						name="private-message"
+						type="text"
+						class="input message-input"
+						placeholder="Tapez votre message..."
+						maxlength="200"
+						autocomplete="off"
+					>
+
+					<button
+						class="btn send-btn"
+						type="button"
+					>
+						Envoyer
+					</button>
+				</div>
+			</div>
+		`;
+
 		document.body.appendChild(dialog);
 
 		dialog
-			.querySelector('.close-btn')
+			.querySelector<HTMLButtonElement>('.close-btn')
 			?.addEventListener('click', () => dialog.remove());
 
-		const input = dialog.querySelector<HTMLInputElement>('.message-input');
-		const sendBtn = dialog.querySelector('.send-btn');
-		if (!input || !sendBtn) return;
+		const input =
+			dialog.querySelector<HTMLInputElement>(
+				'.message-input',
+			);
+
+		const sendButton =
+			dialog.querySelector<HTMLButtonElement>('.send-btn');
+
+		if (!input || !sendButton) return;
 
 		const sendMessage = () => {
 			const message = input.value.trim();
-			if (message && this.engine.network?.socket) {
-				this.engine.network.socket.emit('privateMessage', {
+
+			if (!message || !this.engine.network?.socket) return;
+
+			this.engine.network.socket.emit(
+				'privateMessage',
+				{
 					to: player.id,
 					message,
-				});
-				this.addMessageToHistory(player.id, 'Vous', message, true);
-				input.value = '';
-			}
+				},
+			);
+
+			this.addMessageToHistory(
+				player.id,
+				'Vous',
+				message,
+				true,
+			);
+
+			input.value = '';
+			input.focus();
 		};
 
-		sendBtn.addEventListener('click', sendMessage);
-		input.addEventListener('keypress', (e) => {
-			if (e.key === 'Enter') sendMessage();
+		sendButton.addEventListener('click', sendMessage);
+
+		input.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter') {
+				event.preventDefault();
+				sendMessage();
+			}
 		});
+
 		input.focus();
 	}
 
@@ -244,28 +383,47 @@ export class InteractionManager {
 		playerId: string,
 		sender: string,
 		message: string,
-		isSent: boolean
+		isSent: boolean,
 	) {
-		const history = document.getElementById('message-history-' + playerId);
+		const history = document.getElementById(
+			`message-history-${playerId}`,
+		);
+
 		if (!history) return;
 
-		const msgEl = document.createElement('div');
-		msgEl.className = 'message ' + (isSent ? 'sent' : 'received');
+		const messageElement =
+			document.createElement('div');
 
-		const senderEl = document.createElement('div');
-		senderEl.className = 'message-sender';
-		senderEl.textContent = sender;
+		messageElement.className = `message ${
+			isSent ? 'sent' : 'received'
+		}`;
 
-		const textEl = document.createElement('div');
-		textEl.className = 'message-text';
-		textEl.textContent = message;
+		const senderElement =
+			document.createElement('div');
+		senderElement.className = 'message-sender';
+		senderElement.textContent = sender;
 
-		const timeEl = document.createElement('div');
-		timeEl.className = 'message-time';
-		timeEl.textContent = new Date().toLocaleTimeString();
+		const textElement =
+			document.createElement('div');
+		textElement.className = 'message-text';
+		textElement.textContent = message;
 
-		msgEl.append(senderEl, textEl, timeEl);
-		history.appendChild(msgEl);
+		const timeElement =
+			document.createElement('div');
+		timeElement.className = 'message-time';
+		timeElement.textContent =
+			new Date().toLocaleTimeString('fr-FR', {
+				hour: '2-digit',
+				minute: '2-digit',
+			});
+
+		messageElement.append(
+			senderElement,
+			textElement,
+			timeElement,
+		);
+
+		history.appendChild(messageElement);
 		history.scrollTop = history.scrollHeight;
 	}
 
@@ -277,32 +435,51 @@ export class InteractionManager {
 	}
 
 	receivePrivateMessage(data: PrivateMessage) {
-		const mesh = this.engine.network?.otherPlayers.get(data.from);
+		const mesh =
+			this.engine.network?.otherPlayers.get(data.from);
+
 		if (!mesh) return;
 
 		const username = mesh.userData.username || '?';
-		this.addMessageToHistory(data.from, username, data.message, false);
+
+		this.addMessageToHistory(
+			data.from,
+			username,
+			data.message,
+			false,
+		);
 
 		if (!document.getElementById('message-dialog')) {
-			this.showNotification(username + ' vous a envoye un message');
+			this.showNotification(
+				`${username} vous a envoyé un message`,
+			);
 		}
 	}
 
 	private showNotification(text: string) {
-		const notif = document.createElement('div');
-		notif.className = 'notification';
-		notif.textContent = text;
-		document.body.appendChild(notif);
+		const notification =
+			document.createElement('div');
 
-		setTimeout(() => notif.classList.add('show'), 100);
+		notification.className = 'notification';
+		notification.textContent = text;
+
+		document.body.appendChild(notification);
+
 		setTimeout(() => {
-			notif.classList.remove('show');
-			setTimeout(() => notif.remove(), 300);
+			notification.classList.add('show');
+		}, 100);
+
+		setTimeout(() => {
+			notification.classList.remove('show');
+
+			setTimeout(() => {
+				notification.remove();
+			}, 300);
 		}, 3000);
 	}
 
 	destroy() {
-		this.cleanups.forEach((fn) => fn());
+		this.cleanups.forEach((cleanup) => cleanup());
 		this.cleanups = [];
 	}
 }
