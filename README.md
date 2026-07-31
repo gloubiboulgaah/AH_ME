@@ -72,7 +72,7 @@ Variables d'env : voir `.env.example`.
 - Comptes : inscription / connexion (bcrypt + session cookie httpOnly)
 - Position et couleur du joueur persistées en PostgreSQL (comptes)
 - Chat global, messages privés (touche E), émotes
-- Invités possibles sans compte (pseudo `Guest_xxx`, non persisté)
+- Mode invité disponible sans compte (pseudo personnalisé, non persisté)
 
 ## 📡 Événements Socket.io
 
@@ -93,3 +93,8 @@ Le cookie de session (`sid`, httpOnly) est aussi lu à la connexion Socket.io : 
 Kanban, agenda et répartition des tâches : page Notion **AH_ME > Suivi & Tâches**.
 
 La phase 3D voxel / textures est prévue en fin de projet.
+
+## 📚 Documentation
+
+- [Guide de contribution](CONTRIBUTING.md)
+- [Contrôles du joueur](docs/CONTROLS.md)
