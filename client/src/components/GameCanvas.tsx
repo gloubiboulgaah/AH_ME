@@ -231,6 +231,8 @@ export default function GameCanvas() {
 			...previousMessages.slice(-MAX_MESSAGES + 1),
 			mockMessage,
 		]);
+
+		addChatBubble(mockMessage);
 	};
 
 	return (
