@@ -238,6 +238,8 @@ export default function GameCanvas() {
 			),
 			mockMessage,
 		]);
+
+		addChatBubble(mockMessage);
 	};
 
 	return (
