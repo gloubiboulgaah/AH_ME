@@ -40,9 +40,7 @@ app.use((err, req, res, next) => {
 	}
 
 	res.status(status).json({
-		error: err.status
-			? err.message
-			: 'erreur serveur',
+		error: err.status ? err.message : 'erreur serveur',
 	});
 });
 
@@ -58,31 +56,23 @@ const io = new Server(server, {
 // Sinon, utilise le pseudo invité envoyé dans le handshake Socket.io.
 io.use(async (socket, next) => {
 	try {
-		const cookies = cookie.parse(
-			socket.handshake.headers.cookie || ''
-		);
+		const cookies = cookie.parse(socket.handshake.headers.cookie || '');
 
 		const sessionUser = cookies.sid
 			? await authService.getSessionUser(cookies.sid)
 			: null;
 
-		const rawGuestUsername =
-			socket.handshake.auth?.guestUsername;
+		const rawGuestUsername = socket.handshake.auth?.guestUsername;
 
 		const guestUsername =
-			typeof rawGuestUsername === 'string'
-				? rawGuestUsername.trim()
-				: '';
+			typeof rawGuestUsername === 'string' ? rawGuestUsername.trim() : '';
 
 		const isValidGuestUsername =
-			guestUsername.length >= 3 &&
-			guestUsername.length <= 20;
+			guestUsername.length >= 3 && guestUsername.length <= 20;
 
 		socket.data.user = sessionUser;
 		socket.data.guestUsername =
-			!sessionUser && isValidGuestUsername
-				? guestUsername
-				: null;
+			!sessionUser && isValidGuestUsername ? guestUsername : null;
 
 		socket.data.username =
 			sessionUser?.username ||
@@ -93,17 +83,12 @@ io.use(async (socket, next) => {
 	} catch (error) {
 		console.error(
 			'socket auth:',
-			error instanceof Error
-				? error.message
-				: error
+			error instanceof Error ? error.message : error
 		);
 
 		socket.data.user = null;
 		socket.data.guestUsername = null;
-		socket.data.username = `Guest_${socket.id.slice(
-			0,
-			5
-		)}`;
+		socket.data.username = `Guest_${socket.id.slice(0, 5)}`;
 
 		next();
 	}
@@ -128,9 +113,7 @@ async function main() {
 	await migrate();
 
 	server.listen(config.port, '0.0.0.0', () => {
-		console.log(
-			`serveur pret sur :${config.port}`
-		);
+		console.log(`serveur pret sur :${config.port}`);
 	});
 }
 

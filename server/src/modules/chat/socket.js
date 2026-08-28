@@ -29,12 +29,7 @@ function attach(io, socket) {
 	socket.on('privateMessage', (data) => {
 		const sender = players.get(socket.id);
 
-		if (
-			!sender ||
-			!data ||
-			!data.to ||
-			typeof data.message !== 'string'
-		) {
+		if (!sender || !data || !data.to || typeof data.message !== 'string') {
 			return;
 		}
 

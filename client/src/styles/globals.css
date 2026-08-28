@@ -4,8 +4,8 @@
  * @format
  */
 
-@import '../styles/tokens.css';
-@import '../styles/components.css';
+@import './tokens.css';
+@import './components.css';
 
 * {
 	box-sizing: border-box;

@@ -1,13 +1,6 @@
 /** @format */
 
-'use client';
-
-import {
-	useEffect,
-	useRef,
-	useState,
-	type SyntheticEvent,
-} from 'react';
+import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import type { ChatMessage } from '@/game/types';
 
 interface ChatBoxProps {
@@ -22,10 +15,7 @@ function formatMessageTime(timestamp: number): string {
 	}).format(new Date(timestamp));
 }
 
-export default function ChatBox({
-	messages,
-	onSend,
-}: ChatBoxProps) {
+export default function ChatBox({ messages, onSend }: ChatBoxProps) {
 	const [text, setText] = useState('');
 	const listRef = useRef<HTMLDivElement>(null);
 
@@ -42,9 +32,7 @@ export default function ChatBox({
 		});
 	}, [messages]);
 
-	const send = (
-		event: SyntheticEvent<HTMLFormElement, SubmitEvent>,
-	) => {
+	const send = (event: SyntheticEvent<HTMLFormElement, SubmitEvent>) => {
 		event.preventDefault();
 
 		const message = text.trim();
@@ -58,15 +46,8 @@ export default function ChatBox({
 	};
 
 	return (
-		<section
-			className="chat-box"
-			aria-label="Chat global"
-		>
-			<div
-				className="chat-box-messages"
-				ref={listRef}
-				aria-live="polite"
-			>
+		<section className="chat-box" aria-label="Chat global">
+			<div className="chat-box-messages" ref={listRef} aria-live="polite">
 				{messages.length === 0 ? (
 					<p className="chat-box-empty">
 						Aucun message pour le moment.
@@ -75,21 +56,15 @@ export default function ChatBox({
 					messages.map((message, index) => (
 						<article
 							key={`${message.playerId}-${message.timestamp}-${index}`}
-							className="chat-box-line"
-						>
+							className="chat-box-line">
 							<header className="chat-box-line-header">
-								<strong>
-									{message.username}
-								</strong>
+								<strong>{message.username}</strong>
 
 								<time
 									dateTime={new Date(
-										message.timestamp,
-									).toISOString()}
-								>
-									{formatMessageTime(
-										message.timestamp,
-									)}
+										message.timestamp
+									).toISOString()}>
+									{formatMessageTime(message.timestamp)}
 								</time>
 							</header>
 
@@ -99,14 +74,8 @@ export default function ChatBox({
 				)}
 			</div>
 
-			<form
-				className="chat-box-form"
-				onSubmit={send}
-			>
-				<label
-					className="sr-only"
-					htmlFor="global-chat-message"
-				>
+			<form className="chat-box-form" onSubmit={send}>
+				<label className="sr-only" htmlFor="global-chat-message">
 					Écrire un message
 				</label>
 
@@ -119,16 +88,13 @@ export default function ChatBox({
 					maxLength={300}
 					placeholder="Message..."
 					autoComplete="off"
-					onChange={(event) =>
-						setText(event.target.value)
-					}
+					onChange={(event) => setText(event.target.value)}
 				/>
 
 				<button
 					className="btn chat-box-submit"
 					type="submit"
-					disabled={!text.trim()}
-				>
+					disabled={!text.trim()}>
 					Envoyer
 				</button>
 			</form>

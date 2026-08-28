@@ -1,14 +1,7 @@
 /** @format */
 
-'use client';
-
-import {
-	useCallback,
-	useEffect,
-	useRef,
-	useState,
-} from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GameEngine } from '@/game/engine';
 import { NetworkClient } from '@/game/network';
 import { InteractionManager } from '@/game/interactions';
@@ -18,15 +11,21 @@ import { api } from '@/lib/api';
 import { MOCK_CHAT_MESSAGES } from '@/mocks/chatMessages';
 import DebugOverlay from '@/components/DebugOverlay';
 import ChatBox from './ChatBox';
-import ChatBubble, {
-	type ChatBubbleData,
-} from './ChatBubble';
+import ChatBubble, { type ChatBubbleData } from './ChatBubble';
 
 const MAX_MESSAGES = 50;
 const MAX_BUBBLES = 10;
 
 export default function GameCanvas() {
-	const router = useRouter();
+	const navigate = useNavigate();
+
+	// l'effet de demarrage ne doit tourner qu'une fois,
+	// on passe par une ref pour ne pas le lier a navigate
+	const navigateRef = useRef(navigate);
+
+	useEffect(() => {
+		navigateRef.current = navigate;
+	}, [navigate]);
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const joyContainerRef = useRef<HTMLDivElement>(null);
@@ -36,63 +35,38 @@ export default function GameCanvas() {
 	const bubbleCounterRef = useRef(0);
 
 	const [connected, setConnected] = useState(false);
-	const [messages, setMessages] =
-		useState<ChatMessage[]>(MOCK_CHAT_MESSAGES);
-	const [bubbles, setBubbles] =
-		useState<ChatBubbleData[]>([]);
+	const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT_MESSAGES);
+	const [bubbles, setBubbles] = useState<ChatBubbleData[]>([]);
 	const [username, setUsername] = useState('');
 	const [wireframe, setWireframe] = useState(false);
 
-	const removeBubble = useCallback(
-		(bubbleId: string) => {
-			setBubbles((currentBubbles) =>
-				currentBubbles.filter(
-					(bubble) => bubble.id !== bubbleId,
-				),
-			);
-		},
-		[],
-	);
+	const removeBubble = useCallback((bubbleId: string) => {
+		setBubbles((currentBubbles) =>
+			currentBubbles.filter((bubble) => bubble.id !== bubbleId)
+		);
+	}, []);
 
 	const getMockScreenPosition = (
-		playerId: string,
+		playerId: string
 	): { x: number; y: number } => {
 		let hash = 0;
 
-		for (
-			let index = 0;
-			index < playerId.length;
-			index += 1
-		) {
-			hash =
-				(hash * 31 +
-					playerId.charCodeAt(index)) >>>
-				0;
+		for (let index = 0; index < playerId.length; index += 1) {
+			hash = (hash * 31 + playerId.charCodeAt(index)) >>> 0;
 		}
 
-		const availableWidth = Math.max(
-			window.innerWidth - 400,
-			200,
-		);
+		const availableWidth = Math.max(window.innerWidth - 400, 200);
 
-		const availableHeight = Math.max(
-			window.innerHeight - 350,
-			180,
-		);
+		const availableHeight = Math.max(window.innerHeight - 350, 180);
 
 		return {
 			x: 200 + (hash % availableWidth),
-			y:
-				170 +
-				(Math.floor(hash / 100) %
-					availableHeight),
+			y: 170 + (Math.floor(hash / 100) % availableHeight),
 		};
 	};
 
 	const addChatBubble = (message: ChatMessage) => {
-		const position = getMockScreenPosition(
-			message.playerId,
-		);
+		const position = getMockScreenPosition(message.playerId);
 
 		bubbleCounterRef.current += 1;
 
@@ -106,36 +80,25 @@ export default function GameCanvas() {
 		};
 
 		setBubbles((currentBubbles) => {
-			const movedBubbles = currentBubbles.map(
-				(currentBubble) => {
-					if (
-						currentBubble.playerId !==
-						message.playerId
-					) {
-						return currentBubble;
-					}
+			const movedBubbles = currentBubbles.map((currentBubble) => {
+				if (currentBubble.playerId !== message.playerId) {
+					return currentBubble;
+				}
 
-					return {
-						...currentBubble,
-						y: currentBubble.y - 70,
-					};
-				},
-			);
+				return {
+					...currentBubble,
+					y: currentBubble.y - 70,
+				};
+			});
 
-			return [
-				...movedBubbles.slice(
-					-(MAX_BUBBLES - 1),
-				),
-				bubble,
-			];
+			return [...movedBubbles.slice(-(MAX_BUBBLES - 1)), bubble];
 		});
 	};
 
 	useEffect(() => {
 		let engine: GameEngine | null = null;
 		let network: NetworkClient | null = null;
-		let interactions: InteractionManager | null =
-			null;
+		let interactions: InteractionManager | null = null;
 		let cancelled = false;
 
 		const startGame = async () => {
@@ -143,48 +106,44 @@ export default function GameCanvas() {
 				return;
 			}
 
-			let authenticatedUsername: string | null =
-				null;
+			let authenticatedUsername: string | null = null;
 
 			try {
 				const data = await api.me();
 
-				authenticatedUsername =
-					data.user?.username ?? null;
+				authenticatedUsername = data.user?.username ?? null;
 			} catch {
 				authenticatedUsername = null;
 			}
 
 			const storedGuestUsername =
-				localStorage
-					.getItem('ahme_guest_username')
-					?.trim() || null;
+				localStorage.getItem('ahme_guest_username')?.trim() || null;
 
 			const effectiveUsername =
-				authenticatedUsername ||
-				storedGuestUsername;
+				authenticatedUsername || storedGuestUsername;
 
-			if (!effectiveUsername || cancelled) {
-				window.location.href = '/';
+			// effet demonte pendant l'await : on ne touche a rien
+			if (cancelled) {
+				return;
+			}
+
+			if (!effectiveUsername) {
+				navigateRef.current('/', { replace: true });
 				return;
 			}
 
 			setUsername(effectiveUsername);
 
-			engine = new GameEngine(
-				containerRef.current,
-				{
-					joyBase: joyBaseRef.current,
-					joyStick: joyStickRef.current,
-				},
-			);
+			engine = new GameEngine(containerRef.current, {
+				joyBase: joyBaseRef.current,
+				joyStick: joyStickRef.current,
+			});
 
 			network = new NetworkClient(engine, {
 				url: SOCKET_URL,
 				guestUsername: authenticatedUsername
 					? undefined
-					: storedGuestUsername ||
-						undefined,
+					: storedGuestUsername || undefined,
 				onStatus: setConnected,
 				onChat: (message) => {
 					addChatBubble(message);
@@ -197,17 +156,13 @@ export default function GameCanvas() {
 			interactions = new InteractionManager(engine);
 			engine.interactions = interactions;
 
-			const joyContainer =
-				joyContainerRef.current;
+			const joyContainer = joyContainerRef.current;
 
 			if (
-				('ontouchstart' in window ||
-					navigator.maxTouchPoints > 0) &&
+				('ontouchstart' in window || navigator.maxTouchPoints > 0) &&
 				joyContainer
 			) {
-				joyContainer.classList.add(
-					'touch-enabled',
-				);
+				joyContainer.classList.add('touch-enabled');
 			}
 		};
 
@@ -233,9 +188,7 @@ export default function GameCanvas() {
 		};
 
 		setMessages((previousMessages) => [
-			...previousMessages.slice(
-				-MAX_MESSAGES + 1,
-			),
+			...previousMessages.slice(-MAX_MESSAGES + 1),
 			mockMessage,
 		]);
 
@@ -244,10 +197,7 @@ export default function GameCanvas() {
 
 	return (
 		<>
-			<div
-				id="container"
-				ref={containerRef}
-			/>
+			<div id="container" ref={containerRef} />
 
 			<DebugOverlay
 				enabled
@@ -255,19 +205,14 @@ export default function GameCanvas() {
 				onWireframeChange={setWireframe}
 				infos={{
 					'Chunks chargés': 4,
-					'Joueurs connectés': connected
-						? 1
-						: 0,
+					'Joueurs connectés': connected ? 1 : 0,
 					'Position X': 0,
 					'Position Z': 0,
 					'Socket connecté': connected,
 				}}
 			/>
 
-			<div
-				className="chat-bubble-overlay"
-				aria-live="polite"
-			>
+			<div className="chat-bubble-overlay" aria-live="polite">
 				{bubbles.map((bubble) => (
 					<ChatBubble
 						key={bubble.id}
@@ -281,58 +226,33 @@ export default function GameCanvas() {
 				<div className="hint">
 					{username && (
 						<>
-							Pseudo :{' '}
-							<strong>{username}</strong>
+							Pseudo : <strong>{username}</strong>
 							<br />
 						</>
 					)}
-
 					Flèches / WASD pour se déplacer
-					<br />
-					E pour interagir, joystick sur mobile
+					<br />E pour interagir, joystick sur mobile
 				</div>
 
 				<div
 					id="connection-status"
-					className={
-						connected
-							? 'is-on'
-							: 'is-off'
-					}
-				>
-					{connected
-						? 'Connecté'
-						: 'Déconnecté'}
+					className={connected ? 'is-on' : 'is-off'}>
+					{connected ? 'Connecté' : 'Déconnecté'}
 				</div>
 			</div>
 
 			<button
 				type="button"
 				className="btn avatar-customize-game-button"
-				onClick={() =>
-					router.push('/customize')
-				}
-			>
+				onClick={() => navigate('/customize')}>
 				Personnaliser mon avatar
 			</button>
 
-			<ChatBox
-				messages={messages}
-				onSend={sendChat}
-			/>
+			<ChatBox messages={messages} onSend={sendChat} />
 
-			<div
-				id="joystick-container"
-				ref={joyContainerRef}
-			>
-				<div
-					id="joystick-base"
-					ref={joyBaseRef}
-				>
-					<div
-						id="joystick-stick"
-						ref={joyStickRef}
-					/>
+			<div id="joystick-container" ref={joyContainerRef}>
+				<div id="joystick-base" ref={joyBaseRef}>
+					<div id="joystick-stick" ref={joyStickRef} />
 				</div>
 			</div>
 		</>

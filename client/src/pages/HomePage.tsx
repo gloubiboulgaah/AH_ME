@@ -1,15 +1,12 @@
 /** @format */
 
-'use client';
-
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { Link, useNavigate } from 'react-router-dom';
 import { api, type User } from '@/lib/api';
 import JoinScreen from '@/components/JoinScreen';
 
 export default function HomePage() {
-	const router = useRouter();
+	const navigate = useNavigate();
 
 	const [user, setUser] = useState<User | null>(null);
 	const [checked, setChecked] = useState(false);
@@ -21,9 +18,7 @@ export default function HomePage() {
 
 				// Un compte connecté est prioritaire sur le pseudo invité.
 				if (data.user) {
-					localStorage.removeItem(
-						'ahme_guest_username'
-					);
+					localStorage.removeItem('ahme_guest_username');
 				}
 			})
 			.catch(() => {
@@ -42,16 +37,13 @@ export default function HomePage() {
 	const handleGuestJoin = (username: string) => {
 		const normalizedUsername = username.trim();
 
-		localStorage.setItem(
-			'ahme_guest_username',
-			normalizedUsername
-		);
+		localStorage.setItem('ahme_guest_username', normalizedUsername);
 
 		console.log('Événement rejoindre mock :', {
 			username: normalizedUsername,
 		});
 
-		router.push('/play');
+		navigate('/play');
 	};
 
 	if (!checked) {
@@ -70,11 +62,11 @@ export default function HomePage() {
 				<div className="guest-auth-links">
 					<p>Tu as déjà un compte ?</p>
 
-					<Link href="/login">Connexion</Link>
+					<Link to="/login">Connexion</Link>
 
 					<span>·</span>
 
-					<Link href="/register">Inscription</Link>
+					<Link to="/register">Inscription</Link>
 				</div>
 			</>
 		);
@@ -94,16 +86,14 @@ export default function HomePage() {
 				<button
 					className="btn"
 					type="button"
-					onClick={() => router.push('/play')}
-				>
+					onClick={() => navigate('/play')}>
 					Jouer
 				</button>
 
 				<button
 					className="btn btn-ghost"
 					type="button"
-					onClick={logout}
-				>
+					onClick={logout}>
 					Déconnexion
 				</button>
 			</div>

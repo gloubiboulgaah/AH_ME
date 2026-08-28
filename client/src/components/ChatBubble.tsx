@@ -1,7 +1,5 @@
 /** @format */
 
-'use client';
-
 import { useEffect } from 'react';
 
 export interface ChatBubbleData {
@@ -44,15 +42,10 @@ export default function ChatBubble({
 				left: `${x}px`,
 				top: `${y}px`,
 			}}
-			role="status"
-		>
-			<strong className="avatar-chat-bubble-username">
-				{username}
-			</strong>
+			role="status">
+			<strong className="avatar-chat-bubble-username">{username}</strong>
 
-			<span className="avatar-chat-bubble-text">
-				{text}
-			</span>
+			<span className="avatar-chat-bubble-text">{text}</span>
 		</div>
 	);
 }

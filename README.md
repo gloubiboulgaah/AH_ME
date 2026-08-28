@@ -8,12 +8,17 @@ Espace communautaire 3D isométrique multijoueur (inspiration Habbo). Projet Epi
 
 ```
 AH_ME/
-├── client/                  # Frontend Next.js (React + Three.js)
-│   ├── app/                 # pages (accueil, login, register, play)
+├── client/                  # Frontend Vite (React + Three.js)
+│   ├── index.html
 │   ├── src/
+│   │   ├── main.tsx         # point d'entree
+│   │   ├── router.tsx       # routes react-router
+│   │   ├── pages/           # accueil, login, register, play, customize
 │   │   ├── game/            # moteur three.js, client socket, interactions
-│   │   ├── components/      # GameCanvas, ChatBox
-│   │   └── lib/             # api auth, config
+│   │   ├── components/      # GameCanvas, ChatBox, avatar, debug
+│   │   ├── lib/             # api auth, config
+│   │   └── styles/          # tokens, composants, globals
+│   ├── nginx.conf           # sert le build statique + fallback SPA
 │   └── Dockerfile
 │
 ├── server/                  # Backend Node.js (monolithe modulaire)
@@ -32,7 +37,7 @@ AH_ME/
 
 ## 🏗️ Stack
 
-- **Frontend** : Next.js (React) + Three.js (canvas monté dans un composant client, pas de R3F) + socket.io-client
+- **Frontend** : Vite + React + TypeScript, routing via react-router, Three.js (boucle de rendu gérée à la main, pas de R3F) + socket.io-client. Build statique servi par nginx.
 - **Backend** : Node.js + Express + Socket.io — monolithe modulaire (`auth` / `world` / `chat` / `api`)
 - **Base de données** : PostgreSQL (comptes, sessions, salons, positions)
 - **Infra** : Docker Compose
@@ -59,7 +64,7 @@ Ou à la main :
 ```bash
 docker compose up -d db          # postgres
 cd server && npm install && npm run dev
-cd client && npm install && npx next dev -p 8080
+cd client && npm install && npm run dev
 ```
 
 Variables d'env : voir `.env.example`.

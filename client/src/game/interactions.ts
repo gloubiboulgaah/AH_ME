@@ -95,19 +95,20 @@ export class InteractionManager {
 		window.addEventListener('keydown', onKeyDown);
 
 		this.cleanups.push(() =>
-			window.removeEventListener('keydown', onKeyDown),
+			window.removeEventListener('keydown', onKeyDown)
 		);
 
 		this.interactionMenu.addEventListener('click', (event) => {
 			const target = event.target as HTMLElement;
-			const option =
-				target.closest<HTMLButtonElement>('.interaction-option');
+			const option = target.closest<HTMLButtonElement>(
+				'.interaction-option'
+			);
 
 			if (!option) return;
 
 			this.handleInteraction(
 				option.dataset.action ?? '',
-				option.dataset.playerId ?? '',
+				option.dataset.playerId ?? ''
 			);
 		});
 	}
@@ -118,31 +119,24 @@ export class InteractionManager {
 		this.nearbyPlayers = [];
 		const playerPosition = this.engine.player.position;
 
-		this.engine.network.otherPlayers.forEach(
-			(otherPlayer, playerId) => {
-				const distance = playerPosition.distanceTo(
-					otherPlayer.position,
-				);
+		this.engine.network.otherPlayers.forEach((otherPlayer, playerId) => {
+			const distance = playerPosition.distanceTo(otherPlayer.position);
 
-				if (distance <= this.interactionRadius) {
-					this.nearbyPlayers.push({
-						id: playerId,
-						mesh: otherPlayer,
-						username: otherPlayer.userData.username || '?',
-						distance,
-					});
-				}
-			},
-		);
+			if (distance <= this.interactionRadius) {
+				this.nearbyPlayers.push({
+					id: playerId,
+					mesh: otherPlayer,
+					username: otherPlayer.userData.username || '?',
+					distance,
+				});
+			}
+		});
 
 		this.updateIndicator();
 	}
 
 	private updateIndicator() {
-		if (
-			this.nearbyPlayers.length > 0 &&
-			!this.isMenuOpen
-		) {
+		if (this.nearbyPlayers.length > 0 && !this.isMenuOpen) {
 			this.interactionIndicator.classList.remove('hidden');
 
 			const count = this.nearbyPlayers.length;
@@ -152,9 +146,7 @@ export class InteractionManager {
 					: `Appuyez sur E pour interagir (${count} joueurs à proximité)`;
 
 			const label =
-				this.interactionIndicator.querySelector(
-					'.indicator-text',
-				);
+				this.interactionIndicator.querySelector('.indicator-text');
 
 			if (label) label.textContent = text;
 		} else {
@@ -167,26 +159,23 @@ export class InteractionManager {
 
 		this.isMenuOpen = true;
 
-		const content =
-			this.interactionMenu.querySelector<HTMLDivElement>(
-				'.interaction-menu-content',
-			);
+		const content = this.interactionMenu.querySelector<HTMLDivElement>(
+			'.interaction-menu-content'
+		);
 
 		if (!content) return;
 
 		content.innerHTML = '';
 
 		if (this.nearbyPlayers.length === 1) {
-			content.innerHTML =
-				this.generateSinglePlayerOptions(
-					this.nearbyPlayers[0],
-				);
+			content.innerHTML = this.generateSinglePlayerOptions(
+				this.nearbyPlayers[0]
+			);
 		} else {
 			this.nearbyPlayers.forEach((player) => {
 				const section = document.createElement('div');
 
-				section.className =
-					'player-interaction-section';
+				section.className = 'player-interaction-section';
 
 				section.innerHTML = `
 					<div class="player-header">
@@ -207,9 +196,7 @@ export class InteractionManager {
 		this.interactionIndicator.classList.add('hidden');
 	}
 
-	private generateSinglePlayerOptions(
-		player: NearbyPlayer,
-	) {
+	private generateSinglePlayerOptions(player: NearbyPlayer) {
 		return `
 			<div class="interaction-options">
 				<button
@@ -247,7 +234,7 @@ export class InteractionManager {
 
 	handleInteraction(action: string, playerId: string) {
 		const player = this.nearbyPlayers.find(
-			(nearbyPlayer) => nearbyPlayer.id === playerId,
+			(nearbyPlayer) => nearbyPlayer.id === playerId
 		);
 
 		if (!player) return;
@@ -272,10 +259,7 @@ export class InteractionManager {
 		dialog.className = 'panel message-dialog';
 		dialog.setAttribute('role', 'dialog');
 		dialog.setAttribute('aria-modal', 'false');
-		dialog.setAttribute(
-			'aria-labelledby',
-			'message-dialog-title',
-		);
+		dialog.setAttribute('aria-labelledby', 'message-dialog-title');
 
 		dialog.innerHTML = `
 			<div class="message-dialog-header">
@@ -333,13 +317,9 @@ export class InteractionManager {
 			.querySelector<HTMLButtonElement>('.close-btn')
 			?.addEventListener('click', () => dialog.remove());
 
-		const input =
-			dialog.querySelector<HTMLInputElement>(
-				'.message-input',
-			);
+		const input = dialog.querySelector<HTMLInputElement>('.message-input');
 
-		const sendButton =
-			dialog.querySelector<HTMLButtonElement>('.send-btn');
+		const sendButton = dialog.querySelector<HTMLButtonElement>('.send-btn');
 
 		if (!input || !sendButton) return;
 
@@ -348,20 +328,12 @@ export class InteractionManager {
 
 			if (!message || !this.engine.network?.socket) return;
 
-			this.engine.network.socket.emit(
-				'privateMessage',
-				{
-					to: player.id,
-					message,
-				},
-			);
-
-			this.addMessageToHistory(
-				player.id,
-				'Vous',
+			this.engine.network.socket.emit('privateMessage', {
+				to: player.id,
 				message,
-				true,
-			);
+			});
+
+			this.addMessageToHistory(player.id, 'Vous', message, true);
 
 			input.value = '';
 			input.focus();
@@ -383,45 +355,32 @@ export class InteractionManager {
 		playerId: string,
 		sender: string,
 		message: string,
-		isSent: boolean,
+		isSent: boolean
 	) {
-		const history = document.getElementById(
-			`message-history-${playerId}`,
-		);
+		const history = document.getElementById(`message-history-${playerId}`);
 
 		if (!history) return;
 
-		const messageElement =
-			document.createElement('div');
+		const messageElement = document.createElement('div');
 
-		messageElement.className = `message ${
-			isSent ? 'sent' : 'received'
-		}`;
+		messageElement.className = `message ${isSent ? 'sent' : 'received'}`;
 
-		const senderElement =
-			document.createElement('div');
+		const senderElement = document.createElement('div');
 		senderElement.className = 'message-sender';
 		senderElement.textContent = sender;
 
-		const textElement =
-			document.createElement('div');
+		const textElement = document.createElement('div');
 		textElement.className = 'message-text';
 		textElement.textContent = message;
 
-		const timeElement =
-			document.createElement('div');
+		const timeElement = document.createElement('div');
 		timeElement.className = 'message-time';
-		timeElement.textContent =
-			new Date().toLocaleTimeString('fr-FR', {
-				hour: '2-digit',
-				minute: '2-digit',
-			});
+		timeElement.textContent = new Date().toLocaleTimeString('fr-FR', {
+			hour: '2-digit',
+			minute: '2-digit',
+		});
 
-		messageElement.append(
-			senderElement,
-			textElement,
-			timeElement,
-		);
+		messageElement.append(senderElement, textElement, timeElement);
 
 		history.appendChild(messageElement);
 		history.scrollTop = history.scrollHeight;
@@ -435,30 +394,21 @@ export class InteractionManager {
 	}
 
 	receivePrivateMessage(data: PrivateMessage) {
-		const mesh =
-			this.engine.network?.otherPlayers.get(data.from);
+		const mesh = this.engine.network?.otherPlayers.get(data.from);
 
 		if (!mesh) return;
 
 		const username = mesh.userData.username || '?';
 
-		this.addMessageToHistory(
-			data.from,
-			username,
-			data.message,
-			false,
-		);
+		this.addMessageToHistory(data.from, username, data.message, false);
 
 		if (!document.getElementById('message-dialog')) {
-			this.showNotification(
-				`${username} vous a envoyé un message`,
-			);
+			this.showNotification(`${username} vous a envoyé un message`);
 		}
 	}
 
 	private showNotification(text: string) {
-		const notification =
-			document.createElement('div');
+		const notification = document.createElement('div');
 
 		notification.className = 'notification';
 		notification.textContent = text;

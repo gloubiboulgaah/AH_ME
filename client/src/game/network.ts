@@ -76,30 +76,25 @@ export class NetworkClient {
 		socket.on('disconnect', () => this.onStatus(false));
 		socket.on('connect_error', () => this.onStatus(false));
 
-		socket.on(
-			'init',
-			(data: { playerId: string; player: PlayerData }) => {
-				this.playerId = data.playerId;
+		socket.on('init', (data: { playerId: string; player: PlayerData }) => {
+			this.playerId = data.playerId;
 
-				if (this.engine.player && data.player.color) {
-					this.engine.player.material.color.setHex(
-						data.player.color
-					);
-				}
-
-				if (
-					typeof data.player.x === 'number' &&
-					typeof data.player.y === 'number' &&
-					typeof data.player.z === 'number'
-				) {
-					this.engine.player.position.set(
-						data.player.x,
-						data.player.y,
-						data.player.z
-					);
-				}
+			if (this.engine.player && data.player.color) {
+				this.engine.player.material.color.setHex(data.player.color);
 			}
-		);
+
+			if (
+				typeof data.player.x === 'number' &&
+				typeof data.player.y === 'number' &&
+				typeof data.player.z === 'number'
+			) {
+				this.engine.player.position.set(
+					data.player.x,
+					data.player.y,
+					data.player.z
+				);
+			}
+		});
 
 		socket.on('currentPlayers', (players: PlayerData[]) => {
 			players.forEach((player) => {
@@ -115,12 +110,7 @@ export class NetworkClient {
 
 		socket.on(
 			'playerMoved',
-			(data: {
-				id: string;
-				x: number;
-				y: number;
-				z: number;
-			}) => {
+			(data: { id: string; x: number; y: number; z: number }) => {
 				const otherPlayer = this.otherPlayers.get(data.id);
 
 				if (otherPlayer) {
@@ -159,16 +149,9 @@ export class NetworkClient {
 			color: playerData.color || 0xff6b6b,
 		});
 
-		const mesh = new THREE.Mesh(
-			geometry,
-			material
-		) as PlayerMesh;
+		const mesh = new THREE.Mesh(geometry, material) as PlayerMesh;
 
-		mesh.position.set(
-			playerData.x,
-			playerData.y,
-			playerData.z
-		);
+		mesh.position.set(playerData.x, playerData.y, playerData.z);
 
 		mesh.userData.playerId = playerData.id;
 		mesh.userData.username = playerData.username;
@@ -253,10 +236,7 @@ export class NetworkClient {
 
 			player.position.lerp(player.targetPos, 0.15);
 
-			if (
-				player.position.distanceToSquared(player.targetPos) <
-				0.01
-			) {
+			if (player.position.distanceToSquared(player.targetPos) < 0.01) {
 				player.position.copy(player.targetPos);
 				player.targetPos = null;
 			}
@@ -275,9 +255,7 @@ export class NetworkClient {
 			player.geometry.dispose();
 
 			if (Array.isArray(player.material)) {
-				player.material.forEach((material) =>
-					material.dispose()
-				);
+				player.material.forEach((material) => material.dispose());
 			} else {
 				player.material.dispose();
 			}

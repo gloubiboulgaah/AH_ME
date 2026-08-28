@@ -1,43 +1,37 @@
 /** @format */
 
-'use client';
-
-import {
-	useState,
-	type SubmitEventHandler,
-} from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useState, type SubmitEventHandler } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 
-export default function LoginPage() {
-	const router = useRouter();
+export default function RegisterPage() {
+	const navigate = useNavigate();
 
+	const [username, setUsername] = useState('');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [error, setError] = useState('');
 	const [loading, setLoading] = useState(false);
 
-	const submit: SubmitEventHandler<HTMLFormElement> = async (
-		event,
-	) => {
+	const submit: SubmitEventHandler<HTMLFormElement> = async (event) => {
 		event.preventDefault();
 
 		setError('');
 		setLoading(true);
 
 		try {
-			await api.login({
+			await api.register({
+				username,
 				email,
 				password,
 			});
 
-			router.push('/play');
+			navigate('/play');
 		} catch (err) {
 			setError(
 				err instanceof Error
 					? err.message
-					: "Une erreur s'est produite.",
+					: "Une erreur s'est produite."
 			);
 			setLoading(false);
 		}
@@ -57,31 +51,48 @@ export default function LoginPage() {
 
 			<section className="panel auth-panel">
 				<header className="panel-header">
-					<h1 className="panel-title">Connexion</h1>
+					<h1 className="panel-title">Inscription</h1>
 				</header>
 
-				<form
-					className="auth-form stack"
-					onSubmit={submit}
-				>
+				<form className="auth-form stack" onSubmit={submit}>
 					<div>
 						<label
 							className="input-label"
-							htmlFor="login-email"
-						>
+							htmlFor="register-username">
+							Pseudo
+						</label>
+
+						<input
+							className="input"
+							id="register-username"
+							name="username"
+							type="text"
+							placeholder="Ton pseudo"
+							value={username}
+							onChange={(event) =>
+								setUsername(event.target.value)
+							}
+							minLength={3}
+							maxLength={32}
+							autoComplete="username"
+							disabled={loading}
+							required
+						/>
+					</div>
+
+					<div>
+						<label className="input-label" htmlFor="register-email">
 							Email
 						</label>
 
 						<input
 							className="input"
-							id="login-email"
+							id="register-email"
 							name="email"
 							type="email"
 							placeholder="ton@email.com"
 							value={email}
-							onChange={(event) =>
-								setEmail(event.target.value)
-							}
+							onChange={(event) => setEmail(event.target.value)}
 							autoComplete="email"
 							disabled={loading}
 							required
@@ -91,22 +102,22 @@ export default function LoginPage() {
 					<div>
 						<label
 							className="input-label"
-							htmlFor="login-password"
-						>
+							htmlFor="register-password">
 							Mot de passe
 						</label>
 
 						<input
 							className="input"
-							id="login-password"
+							id="register-password"
 							name="password"
 							type="password"
-							placeholder="Ton mot de passe"
+							placeholder="8 caractères minimum"
 							value={password}
 							onChange={(event) =>
 								setPassword(event.target.value)
 							}
-							autoComplete="current-password"
+							minLength={8}
+							autoComplete="new-password"
 							disabled={loading}
 							required
 						/>
@@ -118,18 +129,13 @@ export default function LoginPage() {
 						</p>
 					)}
 
-					<button
-						className="btn"
-						type="submit"
-						disabled={loading}
-					>
-						{loading ? 'Connexion...' : 'Se connecter'}
+					<button className="btn" type="submit" disabled={loading}>
+						{loading ? 'Inscription...' : "S'inscrire"}
 					</button>
 				</form>
 
 				<p className="panel-text auth-switch">
-					Pas de compte ?{' '}
-					<Link href="/register">Inscription</Link>
+					Déjà un compte ? <Link to="/login">Connexion</Link>
 				</p>
 			</section>
 		</main>

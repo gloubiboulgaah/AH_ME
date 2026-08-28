@@ -27,11 +27,11 @@ cd ..
 
 sleep 2
 
-# frontend next
+# frontend vite
 echo "frontend (port 8080)..."
 cd client
 [ ! -d "node_modules" ] && npm install
-npx next dev -p 8080 &
+npm run dev &
 FRONTEND_PID=$!
 cd ..
 

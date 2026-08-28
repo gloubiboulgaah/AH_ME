@@ -1,26 +1,22 @@
-FROM node:20-alpine AS deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-
 FROM node:20-alpine AS build
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+
+COPY package*.json ./
+RUN npm ci
+
 COPY . .
-ARG NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
-ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
+ARG VITE_SOCKET_URL=http://localhost:3000
+ENV VITE_SOCKET_URL=$VITE_SOCKET_URL
 RUN npm run build
 
-FROM node:20-alpine AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-ENV HOSTNAME=0.0.0.0
-ENV PORT=3000
+FROM nginx:alpine AS runner
 
-COPY --from=build /app/.next/standalone ./
-COPY --from=build /app/.next/static ./.next/static
-COPY --from=build /app/public ./public
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 3000
+EXPOSE 80
 
-CMD ["node", "server.js"]
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]

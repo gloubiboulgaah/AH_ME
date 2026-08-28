@@ -1,12 +1,6 @@
 /** @format */
 
-'use client';
-
-import {
-	useState,
-	type ChangeEvent,
-	type SubmitEventHandler,
-} from 'react';
+import { useState, type ChangeEvent, type SubmitEventHandler } from 'react';
 
 const MIN_USERNAME_LENGTH = 3;
 const MAX_USERNAME_LENGTH = 20;
@@ -15,13 +9,10 @@ type JoinScreenProps = {
 	onJoin: (username: string) => void;
 };
 
-export default function JoinScreen({
-	onJoin,
-}: JoinScreenProps) {
+export default function JoinScreen({ onJoin }: JoinScreenProps) {
 	const [username, setUsername] = useState('');
 	const [error, setError] = useState('');
-	const [isSubmitting, setIsSubmitting] =
-		useState(false);
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const validateUsername = (value: string): string => {
 		const trimmedUsername = value.trim();
@@ -41,14 +32,11 @@ export default function JoinScreen({
 		return '';
 	};
 
-	const handleSubmit: SubmitEventHandler<HTMLFormElement> = (
-		event,
-	) => {
+	const handleSubmit: SubmitEventHandler<HTMLFormElement> = (event) => {
 		event.preventDefault();
 
 		const trimmedUsername = username.trim();
-		const validationError =
-			validateUsername(trimmedUsername);
+		const validationError = validateUsername(trimmedUsername);
 
 		if (validationError) {
 			setError(validationError);
@@ -61,9 +49,7 @@ export default function JoinScreen({
 		onJoin(trimmedUsername);
 	};
 
-	const handleUsernameChange = (
-		event: ChangeEvent<HTMLInputElement>,
-	) => {
+	const handleUsernameChange = (event: ChangeEvent<HTMLInputElement>) => {
 		const value = event.target.value;
 
 		setUsername(value);
@@ -86,34 +72,22 @@ export default function JoinScreen({
 			/>
 
 			<section className="panel join-card">
-				<div
-					className="join-logo"
-					aria-hidden="true"
-				>
+				<div className="join-logo" aria-hidden="true">
 					<span>AH</span>
 					<span>ME</span>
 				</div>
 
-				<p className="join-eyebrow">
-					Espace communautaire 3D
-				</p>
+				<p className="join-eyebrow">Espace communautaire 3D</p>
 
 				<h1>Entre dans le monde</h1>
 
 				<p className="join-description">
-					Choisis un pseudo pour rejoindre les autres
-					joueurs et commencer à explorer !
+					Choisis un pseudo pour rejoindre les autres joueurs et
+					commencer à explorer !
 				</p>
 
-				<form
-					className="join-form"
-					onSubmit={handleSubmit}
-					noValidate
-				>
-					<label
-						className="input-label"
-						htmlFor="username"
-					>
+				<form className="join-form" onSubmit={handleSubmit} noValidate>
+					<label className="input-label" htmlFor="username">
 						Ton pseudo
 					</label>
 
@@ -130,9 +104,7 @@ export default function JoinScreen({
 						autoComplete="nickname"
 						aria-invalid={Boolean(error)}
 						aria-describedby={
-							error
-								? 'username-error'
-								: 'username-help'
+							error ? 'username-error' : 'username-help'
 						}
 						disabled={isSubmitting}
 					/>
@@ -142,34 +114,26 @@ export default function JoinScreen({
 							<p
 								id="username-error"
 								className="form-error"
-								role="alert"
-							>
+								role="alert">
 								{error}
 							</p>
 						) : (
-							<p
-								id="username-help"
-								className="join-help"
-							>
+							<p id="username-help" className="join-help">
 								Entre {MIN_USERNAME_LENGTH} et{' '}
 								{MAX_USERNAME_LENGTH} caractères
 							</p>
 						)}
 
 						<span>
-							{username.trim().length}/
-							{MAX_USERNAME_LENGTH}
+							{username.trim().length}/{MAX_USERNAME_LENGTH}
 						</span>
 					</div>
 
 					<button
 						className="btn join-button"
 						type="submit"
-						disabled={isSubmitting}
-					>
-						{isSubmitting
-							? 'Connexion...'
-							: 'Rejoindre'}
+						disabled={isSubmitting}>
+						{isSubmitting ? 'Connexion...' : 'Rejoindre'}
 					</button>
 				</form>
 			</section>

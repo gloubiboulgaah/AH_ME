@@ -1,20 +1,8 @@
 /** @format */
 
-'use client';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
-import {
-	useEffect,
-	useRef,
-	useState,
-	type ReactNode,
-} from 'react';
-
-export type DebugInfoValue =
-	| string
-	| number
-	| boolean
-	| null
-	| undefined;
+export type DebugInfoValue = string | number | boolean | null | undefined;
 
 export type DebugInfos = Record<string, DebugInfoValue>;
 
@@ -66,12 +54,11 @@ export default function DebugOverlay({
 
 			frameCountRef.current += 1;
 
-			const elapsed =
-				timestamp - previousUpdateRef.current;
+			const elapsed = timestamp - previousUpdateRef.current;
 
 			if (elapsed >= FPS_UPDATE_INTERVAL) {
 				const currentFps = Math.round(
-					(frameCountRef.current * 1000) / elapsed,
+					(frameCountRef.current * 1000) / elapsed
 				);
 
 				setFps(currentFps);
@@ -80,18 +67,14 @@ export default function DebugOverlay({
 				previousUpdateRef.current = timestamp;
 			}
 
-			animationFrameRef.current =
-				requestAnimationFrame(updateFps);
+			animationFrameRef.current = requestAnimationFrame(updateFps);
 		};
 
-		animationFrameRef.current =
-			requestAnimationFrame(updateFps);
+		animationFrameRef.current = requestAnimationFrame(updateFps);
 
 		return () => {
 			if (animationFrameRef.current !== null) {
-				cancelAnimationFrame(
-					animationFrameRef.current,
-				);
+				cancelAnimationFrame(animationFrameRef.current);
 			}
 
 			frameCountRef.current = 0;
@@ -114,10 +97,7 @@ export default function DebugOverlay({
 		window.addEventListener('keydown', handleKeyDown);
 
 		return () => {
-			window.removeEventListener(
-				'keydown',
-				handleKeyDown,
-			);
+			window.removeEventListener('keydown', handleKeyDown);
 		};
 	}, [enabled]);
 
@@ -127,49 +107,33 @@ export default function DebugOverlay({
 
 	const infoEntries = Object.entries(infos);
 
-    // console.log('DebugOverlay affiché', {
-    //     enabled,
-    //     nodeEnv: process.env.NODE_ENV,
-    // });
+	// console.log('DebugOverlay affiché', {
+	//     enabled,
+	//     nodeEnv: process.env.NODE_ENV,
+	// });
 
 	return (
-		<aside
-			className="debug-overlay"
-			aria-label="Informations de débogage"
-		>
+		<aside className="debug-overlay" aria-label="Informations de débogage">
 			<button
 				className="debug-overlay-toggle"
 				type="button"
-				onClick={() =>
-					setIsOpen((currentValue) => !currentValue)
-				}
+				onClick={() => setIsOpen((currentValue) => !currentValue)}
 				aria-expanded={isOpen}
 				aria-controls="debug-overlay-panel"
-				title="Afficher ou masquer le panneau de debug (F3)"
-			>
+				title="Afficher ou masquer le panneau de debug (F3)">
 				<span
 					className="debug-overlay-fps"
 					data-level={
-						fps >= 50
-							? 'good'
-							: fps >= 30
-								? 'medium'
-								: 'low'
-					}
-				>
+						fps >= 50 ? 'good' : fps >= 30 ? 'medium' : 'low'
+					}>
 					{fps} FPS
 				</span>
 
-				<span aria-hidden="true">
-					{isOpen ? '−' : '+'}
-				</span>
+				<span aria-hidden="true">{isOpen ? '−' : '+'}</span>
 			</button>
 
 			{isOpen && (
-				<div
-					className="debug-overlay-panel"
-					id="debug-overlay-panel"
-				>
+				<div className="debug-overlay-panel" id="debug-overlay-panel">
 					<header className="debug-overlay-header">
 						<strong>Debug</strong>
 						<span>F3 pour masquer</span>
@@ -197,9 +161,7 @@ export default function DebugOverlay({
 								type="checkbox"
 								checked={wireframe}
 								onChange={(event) =>
-									onWireframeChange(
-										event.target.checked,
-									)
+									onWireframeChange(event.target.checked)
 								}
 							/>
 						</label>
