@@ -14,6 +14,9 @@ const authService = require('./modules/auth/service');
 const apiRoutes = require('./modules/api/routes');
 const world = require('./modules/world/socket');
 const chat = require('./modules/chat/socket');
+const serverRoutes = require('./modules/server/routes');
+const deskFileRoutes = require('./modules/desk-files/routes');
+const deskNoteRoutes = require('./modules/desk-notes/routes');
 
 const app = express();
 const server = http.createServer(app);
@@ -30,6 +33,9 @@ app.use(cookieParser());
 
 app.use('/auth', authRoutes);
 app.use('/', apiRoutes);
+app.use('/servers', serverRoutes);
+app.use('/desks', deskFileRoutes);
+app.use('/desks', deskNoteRoutes);
 
 // Handler d'erreurs commun aux modules.
 app.use((err, req, res, next) => {

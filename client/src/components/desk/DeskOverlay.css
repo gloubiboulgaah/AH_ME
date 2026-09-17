@@ -1,0 +1,398 @@
+/** @format */
+
+.desk-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+	background: rgba(0, 0, 0, 0.45);
+	backdrop-filter: blur(4px);
+}
+
+.desk-overlay-panel {
+	width: min(760px, 100%);
+	max-height: 90vh;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	border-radius: 16px;
+	background: #ffffff;
+	color: #111827;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.desk-overlay-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 18px 20px;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.desk-overlay-header h2 {
+	margin: 0;
+	font-size: 22px;
+	color: #111827;
+}
+
+.desk-overlay-close {
+	border: 0;
+	background: transparent;
+	color: #111827;
+	font-size: 28px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.desk-files-section,
+.desk-postits-section {
+	padding: 20px;
+}
+
+.desk-files-section {
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.desk-files-section h3,
+.desk-postits-section h3 {
+	margin: 0 0 18px;
+	color: #111827;
+}
+
+.desk-files-empty,
+.desk-notes-empty {
+	margin: 12px 0;
+	color: #6b7280;
+}
+
+/* Pile de documents */
+
+.desk-file-stack {
+	position: relative;
+	min-height: 210px;
+	margin: 10px 0 28px;
+	padding: 10px 20px 30px;
+}
+
+.desk-file-sheet {
+	position: absolute;
+	top: calc(var(--sheet-index) * 12px);
+	left: calc(var(--sheet-index) * 8px);
+	width: min(420px, calc(100% - 40px));
+	min-height: 150px;
+	padding: 18px;
+	border: 1px solid #d1d5db;
+	border-radius: 5px;
+	background: #ffffff;
+	color: #111827;
+	box-shadow: 0 5px 14px rgba(0, 0, 0, 0.16);
+	transform: rotate(calc((var(--sheet-index) - 1) * 0.4deg));
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
+	cursor: default;
+}
+
+.desk-file-sheet:hover {
+	z-index: 100;
+	transform: translateY(-12px) scale(1.02);
+	box-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
+}
+
+.desk-file-icon {
+	font-size: 32px;
+	margin-bottom: 12px;
+}
+
+.desk-file-info {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+.desk-file-info strong {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: #111827;
+}
+
+.desk-file-private {
+	padding: 3px 7px;
+	border-radius: 10px;
+	background: #e5e7eb;
+	color: #4b5563;
+	font-size: 11px;
+}
+
+.desk-file-hidden {
+	background: #f3f4f6;
+}
+
+.desk-file-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 18px;
+	opacity: 0;
+	transform: translateY(5px);
+	transition:
+		opacity 0.2s ease,
+		transform 0.2s ease;
+}
+
+.desk-file-sheet:hover .desk-file-actions {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.desk-file-actions a,
+.desk-file-actions button {
+	border: 1px solid #d1d5db;
+	border-radius: 6px;
+	padding: 6px 9px;
+	background: #ffffff;
+	color: #374151;
+	font: inherit;
+	font-size: 12px;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.desk-file-actions a:hover,
+.desk-file-actions button:hover {
+	background: #f3f4f6;
+}
+
+.desk-file-actions button:last-child {
+	color: #b91c1c;
+}
+
+/* Upload */
+
+.desk-file-dropzone {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	min-height: 130px;
+	padding: 20px;
+	border: 2px dashed #d1d5db;
+	border-radius: 10px;
+	background: #f9fafb;
+	text-align: center;
+	transition:
+		border-color 0.2s ease,
+		background 0.2s ease;
+}
+
+.desk-file-dropzone.is-dragging {
+	border-color: #4f46e5;
+	background: #eef2ff;
+}
+
+.desk-file-dropzone p {
+	margin: 0;
+	color: #6b7280;
+	font-size: 14px;
+}
+
+.desk-file-dropzone button {
+	border: 0;
+	border-radius: 8px;
+	padding: 10px 14px;
+	background: #111827;
+	color: #ffffff;
+	cursor: pointer;
+}
+
+.desk-file-dropzone button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Post-its */
+
+.desk-notes-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 14px;
+	margin-bottom: 20px;
+}
+
+.desk-notes-empty {
+	grid-column: 1 / -1;
+	text-align: center;
+}
+
+.desk-note {
+	padding: 16px;
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	border-radius: 10px;
+	color: #111827;
+	box-shadow: 0 5px 14px rgba(0, 0, 0, 0.12);
+}
+
+.desk-note-yellow {
+	background: #fff7a8;
+}
+
+.desk-note-pink {
+	background: #ffd1e3;
+}
+
+.desk-note-blue {
+	background: #cfe8ff;
+}
+
+.desk-note-green {
+	background: #d7f5c8;
+}
+
+.desk-note-content {
+	margin-bottom: 14px;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	color: #111827;
+	font-weight: 500;
+	line-height: 1.4;
+}
+
+.desk-note-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	color: #374151;
+	font-size: 12px;
+}
+
+.desk-note-meta button {
+	margin-left: auto;
+	border: 0;
+	background: transparent;
+	color: #b91c1c;
+	cursor: pointer;
+	font-size: 12px;
+}
+
+/* Formulaire post-it */
+
+.desk-note-form {
+	padding-top: 20px;
+	border-top: 1px solid #e5e7eb;
+}
+
+.desk-note-form textarea {
+	width: 100%;
+	box-sizing: border-box;
+	resize: vertical;
+	min-height: 100px;
+	padding: 12px;
+	border: 1px solid #d1d5db;
+	border-radius: 10px;
+	background: #ffffff;
+	color: #111827;
+	font: inherit;
+	outline: none;
+}
+
+.desk-note-form textarea:focus {
+	border-color: #6b7280;
+}
+
+.desk-note-form textarea::placeholder {
+	color: #6b7280;
+}
+
+.desk-note-form-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	margin-top: 12px;
+}
+
+.desk-note-colors {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.desk-note-colors label {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	color: #374151;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.desk-note-colors input {
+	cursor: pointer;
+}
+
+.desk-note-form-footer > button {
+	border: 0;
+	border-radius: 8px;
+	padding: 10px 14px;
+	background: #111827;
+	color: #ffffff;
+	cursor: pointer;
+}
+
+.desk-note-form-footer > button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.desk-note-counter {
+	margin-top: 6px;
+	text-align: right;
+	color: #6b7280;
+	font-size: 12px;
+}
+
+.desk-overlay-error {
+	margin: 0;
+	padding: 0 20px 16px;
+	color: #b91c1c;
+	font-size: 14px;
+}
+
+@media (max-width: 600px) {
+	.desk-overlay {
+		padding: 10px;
+	}
+
+	.desk-overlay-panel {
+		max-height: 95vh;
+	}
+
+	.desk-file-stack {
+		padding-left: 5px;
+		padding-right: 5px;
+	}
+
+	.desk-file-sheet {
+		width: calc(100% - 20px);
+	}
+
+	.desk-notes-list {
+		grid-template-columns: 1fr;
+	}
+
+	.desk-note-form-footer {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.desk-note-form-footer > button {
+		width: 100%;
+	}
+}
