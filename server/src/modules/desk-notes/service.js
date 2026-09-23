@@ -50,27 +50,33 @@ async function createNote({ deskId, authorId, content, color }) {
 		throw error;
 	}
 
-	if (!ALLOWED_COLORS.has(color)) {
+	if (typeof color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(color)) {
 		const error = new Error('couleur invalide');
 		error.status = 400;
 		throw error;
 	}
 
 	const { rows } = await db.query(
-		`INSERT INTO desk_notes (
-			desk_id,
-			author_id,
-			content,
-			color
+		`WITH inserted_note AS (
+			INSERT INTO desk_notes (
+				desk_id,
+				author_id,
+				content,
+				color
+			)
+			VALUES ($1, $2, $3, $4)
+			RETURNING *
 		)
-		VALUES ($1, $2, $3, $4)
-		RETURNING
-            id,
-            desk_id AS "deskId",
-            author_id AS "authorId",
-            content,
-            color,
-            created_at AS "createdAt"`,
+		SELECT
+			n.id,
+			n.desk_id AS "deskId",
+			n.author_id AS "authorId",
+			u.username AS "authorUsername",
+			n.content,
+			n.color,
+			n.created_at AS "createdAt"
+		FROM inserted_note n
+		JOIN users u ON u.id = n.author_id`,
 		[deskId, authorId, trimmedContent, color]
 	);
 

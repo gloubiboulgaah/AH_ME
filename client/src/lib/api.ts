@@ -25,7 +25,7 @@ export interface AppServer {
 	members: ServerMember[];
 }
 
-export type DeskNoteColor = 'yellow' | 'pink' | 'blue' | 'green';
+export type DeskNoteColor = string;
 
 export interface DeskNote {
 	id: number;

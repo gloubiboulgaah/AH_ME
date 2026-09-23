@@ -21,13 +21,6 @@ interface DeskOverlayProps {
 	onClose: () => void;
 }
 
-const COLORS: Array<{ value: DeskNoteColor; label: string }> = [
-	{ value: 'yellow', label: 'Jaune' },
-	{ value: 'pink', label: 'Rose' },
-	{ value: 'blue', label: 'Bleu' },
-	{ value: 'green', label: 'Vert' },
-];
-
 function formatDate(date: string) {
 	return new Date(date).toLocaleString('fr-FR', {
 		dateStyle: 'short',
@@ -39,7 +32,7 @@ export default function DeskOverlay({ deskId, onClose }: DeskOverlayProps) {
 	/* Post-its */
 	const [notes, setNotes] = useState<DeskNote[]>([]);
 	const [content, setContent] = useState('');
-	const [color, setColor] = useState<DeskNoteColor>('yellow');
+	const [color, setColor] = useState<DeskNoteColor>('#fff3a3');
 	const [notesLoading, setNotesLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 
@@ -381,7 +374,8 @@ export default function DeskOverlay({ deskId, onClose }: DeskOverlayProps) {
 							notes.map((note) => (
 								<article
 									key={note.id}
-									className={`desk-note desk-note-${note.color}`}>
+									className="desk-note"
+									style={{ backgroundColor: note.color }}>
 									<div className="desk-note-content">
 										{note.content}
 									</div>
@@ -415,23 +409,14 @@ export default function DeskOverlay({ deskId, onClose }: DeskOverlayProps) {
 						/>
 
 						<div className="desk-note-form-footer">
-							<div className="desk-note-colors">
-								{COLORS.map((item) => (
-									<label key={item.value}>
-										<input
-											type="radio"
-											name="desk-note-color"
-											value={item.value}
-											checked={color === item.value}
-											onChange={() =>
-												setColor(item.value)
-											}
-										/>
-
-										{item.label}
-									</label>
-								))}
-							</div>
+							<label className="desk-note-color-picker">
+								Couleur
+								<input
+									type="color"
+									value={color}
+									onChange={(e) => setColor(e.target.value)}
+								/>
+							</label>
 
 							<button
 								type="submit"

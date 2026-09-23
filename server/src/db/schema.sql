@@ -1,116 +1,90 @@
 CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
-  username VARCHAR(32) UNIQUE NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(32) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
-  token UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  expires_at TIMESTAMPTZ NOT NULL
+    token UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS rooms (
-  id SERIAL PRIMARY KEY,
-  slug VARCHAR(64) UNIQUE NOT NULL,
-  name VARCHAR(128) NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    id SERIAL PRIMARY KEY,
+    slug VARCHAR(64) UNIQUE NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- etat persiste des joueurs connectes (une ligne par compte)
 CREATE TABLE IF NOT EXISTS players (
-  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  room_id INTEGER REFERENCES rooms(id) ON DELETE SET NULL,
-  x REAL NOT NULL DEFAULT 0,
-  y REAL NOT NULL DEFAULT 5,
-  z REAL NOT NULL DEFAULT 0,
-  color INTEGER,
-  last_seen TIMESTAMPTZ NOT NULL DEFAULT now()
+    user_id INTEGER PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+    room_id INTEGER REFERENCES rooms (id) ON DELETE SET NULL,
+    x REAL NOT NULL DEFAULT 0,
+    y REAL NOT NULL DEFAULT 5,
+    z REAL NOT NULL DEFAULT 0,
+    color INTEGER,
+    last_seen TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions (expires_at);
 
-INSERT INTO rooms (slug, name) VALUES ('lobby', 'Lobby')
-ON CONFLICT (slug) DO NOTHING;
+INSERT INTO
+    rooms (slug, name)
+VALUES ('lobby', 'Lobby') ON CONFLICT (slug) DO NOTHING;
 
 -- Bureaux des membres
 CREATE TABLE IF NOT EXISTS desks (
     id SERIAL PRIMARY KEY,
-
-    server_id INTEGER NOT NULL
-        REFERENCES rooms(id) ON DELETE CASCADE,
-
-    owner_id INTEGER NOT NULL
-        REFERENCES users(id) ON DELETE CASCADE,
-
+    server_id INTEGER NOT NULL REFERENCES rooms (id) ON DELETE CASCADE,
+    owner_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_desks_server
-ON desks(server_id);
+CREATE INDEX IF NOT EXISTS idx_desks_server ON desks (server_id);
 
-CREATE INDEX IF NOT EXISTS idx_desks_owner
-ON desks(owner_id);
+CREATE INDEX IF NOT EXISTS idx_desks_owner ON desks (owner_id);
 
 -- Documents déposés sur les bureaux
 CREATE TABLE IF NOT EXISTS desk_files (
     id SERIAL PRIMARY KEY,
-
-    desk_id INTEGER NOT NULL
-        REFERENCES desks(id) ON DELETE CASCADE,
-
-    uploader_id INTEGER NOT NULL
-        REFERENCES users(id) ON DELETE CASCADE,
-
+    desk_id INTEGER NOT NULL REFERENCES desks (id) ON DELETE CASCADE,
+    uploader_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     original_name VARCHAR(255) NOT NULL,
     stored_name VARCHAR(255) NOT NULL UNIQUE,
     size BIGINT NOT NULL,
     mime_type VARCHAR(255) NOT NULL,
     is_hidden BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    CONSTRAINT desk_files_size_positive
-        CHECK (size > 0),
-
-    CONSTRAINT desk_files_original_name_not_empty
-        CHECK (length(btrim(original_name)) > 0)
+    CONSTRAINT desk_files_size_positive CHECK (size > 0),
+    CONSTRAINT desk_files_original_name_not_empty CHECK (
+        length(btrim (original_name)) > 0
+    )
 );
 
-CREATE INDEX IF NOT EXISTS idx_desk_files_desk
-ON desk_files(desk_id);
+CREATE INDEX IF NOT EXISTS idx_desk_files_desk ON desk_files (desk_id);
 
-CREATE INDEX IF NOT EXISTS idx_desk_files_uploader
-ON desk_files(uploader_id);
+CREATE INDEX IF NOT EXISTS idx_desk_files_uploader ON desk_files (uploader_id);
 
 -- Post-its déposés sur les bureaux
 CREATE TABLE IF NOT EXISTS desk_notes (
     id SERIAL PRIMARY KEY,
-
-    desk_id INTEGER NOT NULL
-        REFERENCES desks(id) ON DELETE CASCADE,
-
-    author_id INTEGER NOT NULL
-        REFERENCES users(id) ON DELETE CASCADE,
-
+    desk_id INTEGER NOT NULL REFERENCES desks (id) ON DELETE CASCADE,
+    author_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     content VARCHAR(500) NOT NULL,
-    color VARCHAR(20) NOT NULL DEFAULT 'yellow',
+    color VARCHAR(7) NOT NULL DEFAULT '#fff3a3',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    CONSTRAINT desk_notes_content_not_empty
-        CHECK (length(btrim(content)) > 0),
-
-    CONSTRAINT desk_notes_color_valid
-        CHECK (color IN ('yellow', 'pink', 'blue', 'green'))
+    CONSTRAINT desk_notes_content_not_empty CHECK (length(btrim (content)) > 0),
+    CONSTRAINT desk_notes_color_valid CHECK (color ~ '^#[0-9A-Fa-f]{6}$')
 );
 
-CREATE INDEX IF NOT EXISTS idx_desk_notes_desk
-ON desk_notes(desk_id);
+CREATE INDEX IF NOT EXISTS idx_desk_notes_desk ON desk_notes (desk_id);
 
-CREATE INDEX IF NOT EXISTS idx_desk_notes_author
-ON desk_notes(author_id);
+CREATE INDEX IF NOT EXISTS idx_desk_notes_author ON desk_notes (author_id);
 
 -- Serveur principal de l'application
 CREATE TABLE IF NOT EXISTS servers (
@@ -119,41 +93,30 @@ CREATE TABLE IF NOT EXISTS servers (
     visibility VARCHAR(10) NOT NULL DEFAULT 'public',
     invite_code_hash TEXT,
     capacity INTEGER NOT NULL DEFAULT 20,
-    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    owner_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     is_active BOOLEAN NOT NULL DEFAULT true,
-
-    CONSTRAINT servers_capacity_positive
-        CHECK (capacity > 0),
-
-    CONSTRAINT servers_visibility_valid
-        CHECK (visibility IN ('public', 'private'))
+    CONSTRAINT servers_capacity_positive CHECK (capacity > 0),
+    CONSTRAINT servers_visibility_valid CHECK (
+        visibility IN ('public', 'private')
+    )
 );
 
 -- Un seul serveur actif à la fois
-CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_server
-ON servers (is_active)
-WHERE is_active = true;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_server ON servers (is_active)
+WHERE
+    is_active = true;
 
 -- Membres du serveur
 CREATE TABLE IF NOT EXISTS server_members (
-    server_id INTEGER NOT NULL
-        REFERENCES servers(id) ON DELETE CASCADE,
-
-    user_id INTEGER NOT NULL
-        REFERENCES users(id) ON DELETE CASCADE,
-
+    server_id INTEGER NOT NULL REFERENCES servers (id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     role VARCHAR(10) NOT NULL DEFAULT 'member',
     joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-
     PRIMARY KEY (server_id, user_id),
-
-    CONSTRAINT server_members_role_valid
-        CHECK (role IN ('owner', 'member'))
+    CONSTRAINT server_members_role_valid CHECK (role IN ('owner', 'member'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_server_members_user
-ON server_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_server_members_user ON server_members (user_id);
 
-CREATE INDEX IF NOT EXISTS idx_server_members_server
-ON server_members(server_id);
+CREATE INDEX IF NOT EXISTS idx_server_members_server ON server_members (server_id);
