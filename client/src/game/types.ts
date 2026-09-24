@@ -40,6 +40,7 @@ export type PlayerMesh = THREE.Mesh<THREE.BufferGeometry, THREE.Material> & {
 };
 
 export interface DeskSummary {
+	deskId: number;
 	slotIndex: number;
 	userId: number | null;
 	username: string | null;

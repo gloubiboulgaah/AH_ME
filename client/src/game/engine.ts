@@ -34,7 +34,9 @@ interface JoystickState {
 }
 
 // rayon d'interaction avec un bureau
-const DESK_REACH = TILE * 1.3;
+// 1.6 pour couvrir la diagonale (TILE * racine de 2 = 17) sans atteindre
+// la case suivante (24)
+const DESK_REACH = TILE * 1.6;
 
 // moteur three.js, vue iso ortho
 // la boucle de rendu reste ici, pas de r3f (cf page archi notion)
@@ -69,6 +71,7 @@ export class GameEngine {
 	private onOpenDesk: (desk: DeskInfo) => void;
 	private onDeskTargetChange: (desk: DeskInfo | null) => void;
 	private targetedDesk: DeskInfo | null = null;
+	private targetSignature = '';
 	private cameraOffset = new THREE.Vector3(200, 200, 200);
 	private rafId: number | null = null;
 	private disposed = false;
@@ -87,6 +90,11 @@ export class GameEngine {
 		this.init();
 		this.bindEvents();
 		this.animate();
+
+		// acces au moteur depuis la console en dev
+		if (import.meta.env.DEV) {
+			(window as unknown as { engine: GameEngine }).engine = this;
+		}
 	}
 
 	// bouchons pour l'instant, remplaces par registry.loadInto() quand les
@@ -358,13 +366,22 @@ export class GameEngine {
 
 	private updateDeskTarget() {
 		const found = this.desks.nearest(this.player.position, DESK_REACH);
-		const previous = this.targetedDesk?.slotIndex ?? null;
-		const next = found?.slotIndex ?? null;
+
+		// le proprietaire et l'id arrivent apres la detection, on remonte
+		// aussi leurs changements sinon l'invite reste sur l'ancien etat
+		const signature = found
+			? `${found.slotIndex}:${found.deskId}:${
+					found.occupant?.username ?? ''
+				}`
+			: '';
 
 		this.targetedDesk = found;
-		this.desks.highlight(next);
+		this.desks.highlight(found ? found.slotIndex : null);
 
-		if (previous !== next) this.onDeskTargetChange(found);
+		if (signature !== this.targetSignature) {
+			this.targetSignature = signature;
+			this.onDeskTargetChange(found);
+		}
 	}
 
 	animate() {

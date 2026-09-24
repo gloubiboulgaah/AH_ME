@@ -30,11 +30,14 @@ services:
         restart: unless-stopped
         ports:
             - '3000:3000'
+        volumes:
+            - file-data:/app/uploads
         environment:
             - NODE_ENV=production
             - PORT=3000
             - CLIENT_URL=${CLIENT_URL:-http://localhost:8080}
             - DATABASE_URL=postgres://ahme:${POSTGRES_PASSWORD:-ahme}@db:5432/ahme
+            - FILE_STORAGE_PATH=/app/uploads
         depends_on:
             db:
                 condition: service_healthy
@@ -75,7 +78,7 @@ services:
                     '--quiet',
                     '--tries=1',
                     '--spider',
-                    'http://localhost/',
+                    'http://127.0.0.1/',
                 ]
             interval: 30s
             timeout: 10s
@@ -90,3 +93,5 @@ networks:
 volumes:
     db-data:
         name: ahme-db-data
+    file-data:
+        name: ahme-file-data

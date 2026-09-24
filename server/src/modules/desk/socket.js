@@ -2,29 +2,6 @@
 
 const service = require('./service');
 
-// contenu des bureaux : bouchon en attendant les API fichiers et post-its
-// de Safiya, qui ne sont pas encore mergees
-// une fois branchees, remplacer par un COUNT sur desk_files / desk_notes
-const mockContent = new Map();
-
-function contentFor(slotIndex) {
-	if (!mockContent.has(slotIndex)) {
-		mockContent.set(slotIndex, {
-			files: (slotIndex * 3) % 7,
-			notes: (slotIndex * 2) % 5,
-		});
-	}
-
-	return mockContent.get(slotIndex);
-}
-
-function withContent(desk) {
-	return {
-		...desk,
-		content: contentFor(desk.slotIndex),
-	};
-}
-
 function attach(io, socket) {
 	const user = socket.data.user;
 
@@ -32,25 +9,24 @@ function attach(io, socket) {
 		if (user) {
 			const assigned = await service.assign(user.id);
 
-			if (assigned) {
+			if (assigned.deskId) {
 				socket.data.deskSlot = assigned.slotIndex;
 
 				socket.broadcast.emit('deskAssigned', {
+					deskId: assigned.deskId,
 					slotIndex: assigned.slotIndex,
 					userId: user.id,
 					username: socket.data.username,
-					content: contentFor(assigned.slotIndex),
+					content: await service.contentFor(assigned.deskId),
 				});
-			} else {
+			} else if (assigned.reason === 'full') {
 				socket.emit('deskFull');
 			}
 		}
 
-		const desks = await service.list();
-
 		socket.emit('deskList', {
 			mySlotIndex: socket.data.deskSlot ?? null,
-			desks: desks.map(withContent),
+			desks: await service.list(),
 		});
 	};
 
@@ -61,25 +37,29 @@ function attach(io, socket) {
 		if (!user) return;
 
 		try {
-			const slotIndex = await service.release(user.id);
+			const released = await service.release(user.id);
 
-			if (slotIndex !== null) {
+			if (released) {
 				socket.data.deskSlot = null;
-				io.emit('deskReleased', { slotIndex });
+				io.emit('deskReleased', { slotIndex: released.slotIndex });
 			}
 		} catch (err) {
 			console.error('desk leave:', err.message);
 		}
 	});
 
-	// TODO brancher sur les vraies tables quand les API de Safiya arrivent
-	socket.on('deskContent', (data) => {
-		if (!data || typeof data.slotIndex !== 'number') return;
+	// rafraichit l'apparence 3D apres un depot ou un post-it
+	socket.on('deskContent', async (data) => {
+		if (!data || typeof data.deskId !== 'number') return;
 
-		socket.emit('deskContent', {
-			slotIndex: data.slotIndex,
-			content: contentFor(data.slotIndex),
-		});
+		try {
+			io.emit('deskContent', {
+				slotIndex: data.slotIndex,
+				content: await service.contentFor(data.deskId),
+			});
+		} catch (err) {
+			console.error('desk content:', err.message);
+		}
 	});
 }
 

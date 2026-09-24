@@ -26,6 +26,7 @@ export interface DeskContent {
 
 export interface DeskInfo {
 	slotIndex: number;
+	deskId: number | null;
 	occupant: DeskOccupant | null;
 	content: DeskContent;
 	position: THREE.Vector3;
@@ -34,6 +35,7 @@ export interface DeskInfo {
 
 interface DeskState {
 	slotIndex: number;
+	deskId: number | null;
 	anchor: THREE.Object3D;
 	occupant: DeskOccupant | null;
 	content: DeskContent;
@@ -98,6 +100,7 @@ export class DeskManager {
 
 			this.desks.push({
 				slotIndex,
+				deskId: null,
 				anchor,
 				occupant: null,
 				content: { files: 0, notes: 0 },
@@ -115,6 +118,11 @@ export class DeskManager {
 
 	occupiedCount() {
 		return this.desks.filter((desk) => desk.occupant).length;
+	}
+
+	setDeskId(slotIndex: number, deskId: number) {
+		const desk = this.desks[slotIndex];
+		if (desk) desk.deskId = deskId;
 	}
 
 	setOccupant(slotIndex: number, occupant: DeskOccupant) {
@@ -217,6 +225,7 @@ export class DeskManager {
 
 			best = {
 				slotIndex: desk.slotIndex,
+				deskId: desk.deskId,
 				occupant: desk.occupant,
 				content: desk.content,
 				position: deskPosition,

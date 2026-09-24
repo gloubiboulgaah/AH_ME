@@ -10,12 +10,19 @@ import { SOCKET_URL } from '@/lib/config';
 import { api } from '@/lib/api';
 import { MOCK_CHAT_MESSAGES } from '@/mocks/chatMessages';
 import DebugOverlay from '@/components/DebugOverlay';
-import DeskOverlay, { type DeskTarget } from '@/components/DeskOverlay';
+import DeskOverlay from '@/components/desk/DeskOverlay';
 import ChatBox from './ChatBox';
 import ChatBubble, { type ChatBubbleData } from './ChatBubble';
 
 const MAX_MESSAGES = 50;
 const MAX_BUBBLES = 10;
+
+// bureau vise ou ouvert, vu depuis l'ui
+interface DeskTarget {
+	slotIndex: number;
+	deskId: number | null;
+	username: string | null;
+}
 
 export default function GameCanvas() {
 	const navigate = useNavigate();
@@ -52,7 +59,18 @@ export default function GameCanvas() {
 		}
 	}, [openDesk]);
 
-	const closeDesk = useCallback(() => setOpenDesk(null), []);
+	const closeDesk = useCallback(() => {
+		setOpenDesk((desk) => {
+			if (desk) {
+				networkRef.current?.requestDeskContent(
+					desk.slotIndex,
+					desk.deskId
+				);
+			}
+
+			return null;
+		});
+	}, []);
 
 	const removeBubble = useCallback((bubbleId: string) => {
 		setBubbles((currentBubbles) =>
@@ -151,14 +169,12 @@ export default function GameCanvas() {
 			// le moteur ne connait pas react, il remonte un descripteur plat
 			const toTarget = (desk: {
 				slotIndex: number;
+				deskId: number | null;
 				occupant: { username: string } | null;
-				content: { files: number; notes: number };
 			}): DeskTarget => ({
 				slotIndex: desk.slotIndex,
+				deskId: desk.deskId,
 				username: desk.occupant?.username ?? null,
-				files: desk.content.files,
-				notes: desk.content.notes,
-				isMine: desk.slotIndex === networkRef.current?.mySlotIndex,
 			});
 
 			engine = new GameEngine(containerRef.current, {
@@ -166,8 +182,9 @@ export default function GameCanvas() {
 				joyStick: joyStickRef.current,
 				onDeskTargetChange: (desk) =>
 					setTargetedDesk(desk ? toTarget(desk) : null),
+				// un bureau sans id n'est pas encore connu du serveur
 				onOpenDesk: (desk) => {
-					networkRef.current?.requestDeskContent(desk.slotIndex);
+					if (desk.deskId === null) return;
 					setOpenDesk(toTarget(desk));
 				},
 			});
@@ -309,7 +326,9 @@ export default function GameCanvas() {
 				</div>
 			</div>
 
-			{openDesk && <DeskOverlay desk={openDesk} onClose={closeDesk} />}
+			{openDesk && openDesk.deskId !== null && (
+				<DeskOverlay deskId={openDesk.deskId} onClose={closeDesk} />
+			)}
 		</>
 	);
 }

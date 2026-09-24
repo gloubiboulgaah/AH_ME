@@ -45,3 +45,6 @@ README-old.md
 # Tests
 coverage/
 .nyc_output/
+
+# fichiers deposes sur les bureaux
+server/uploads/

@@ -87,14 +87,14 @@ export class NetworkClient {
 				);
 			}
 
+			// y ignore, les modeles voxel sont ancres sur leurs pieds
 			if (
 				typeof data.player.x === 'number' &&
-				typeof data.player.y === 'number' &&
 				typeof data.player.z === 'number'
 			) {
 				this.engine.player.position.set(
 					data.player.x,
-					data.player.y,
+					0,
 					data.player.z
 				);
 			}
@@ -120,7 +120,7 @@ export class NetworkClient {
 				if (otherPlayer) {
 					otherPlayer.targetPos = new THREE.Vector3(
 						data.x,
-						data.y,
+						0,
 						data.z
 					);
 				}
@@ -152,6 +152,8 @@ export class NetworkClient {
 			'deskList',
 			(data: { mySlotIndex: number | null; desks: DeskSummary[] }) => {
 				data.desks.forEach((desk) => {
+					this.engine.desks.setDeskId(desk.slotIndex, desk.deskId);
+
 					if (desk.userId && desk.username) {
 						this.engine.desks.setOccupant(desk.slotIndex, {
 							userId: desk.userId,
@@ -172,11 +174,13 @@ export class NetworkClient {
 		socket.on(
 			'deskAssigned',
 			(data: {
+				deskId: number;
 				slotIndex: number;
 				userId: number;
 				username: string;
 				content: { files: number; notes: number };
 			}) => {
+				this.engine.desks.setDeskId(data.slotIndex, data.deskId);
 				this.engine.desks.setOccupant(data.slotIndex, {
 					userId: data.userId,
 					username: data.username,
@@ -208,7 +212,7 @@ export class NetworkClient {
 		const geometry = this.engine.avatarGeometryFor(playerData.color);
 		const mesh = new THREE.Mesh(geometry, voxelMaterial()) as PlayerMesh;
 
-		mesh.position.set(playerData.x, playerData.y, playerData.z);
+		mesh.position.set(playerData.x, 0, playerData.z);
 
 		mesh.userData.playerId = playerData.id;
 		mesh.userData.username = playerData.username;
@@ -288,9 +292,10 @@ export class NetworkClient {
 		this.socket.emit('chatMessage', trimmedMessage);
 	}
 
-	requestDeskContent(slotIndex: number) {
-		if (!this.socket?.connected) return;
-		this.socket.emit('deskContent', { slotIndex });
+	// a rappeler apres un depot ou un post-it pour rafraichir l'apparence 3D
+	requestDeskContent(slotIndex: number, deskId: number | null) {
+		if (!this.socket?.connected || deskId === null) return;
+		this.socket.emit('deskContent', { slotIndex, deskId });
 	}
 
 	update() {
