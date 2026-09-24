@@ -4,6 +4,7 @@ const { Router } = require('express');
 
 const authService = require('../auth/service');
 const serverService = require('./service');
+const deskService = require('../desk/service');
 
 const router = Router();
 
@@ -162,8 +163,12 @@ router.post('/:id/leave', async (req, res, next) => {
 
 		await serverService.leaveServer(serverId, user.id);
 
+		// sinon l'emplacement reste occupe par un non-membre
+		const released = await deskService.release(user.id);
+
 		res.json({
 			ok: true,
+			releasedSlotIndex: released ? released.slotIndex : null,
 		});
 	} catch (err) {
 		next(err);
