@@ -3,8 +3,10 @@
 import * as THREE from 'three';
 import { io, type Socket } from 'socket.io-client';
 import type { GameEngine } from './engine';
+import { voxelMaterial } from './voxel/registry';
 import type {
 	ChatMessage,
+	DeskSummary,
 	PlayerData,
 	PlayerMesh,
 	PrivateMessage,
@@ -16,12 +18,16 @@ interface NetworkOptions {
 	onStatus?: (connected: boolean) => void;
 	onChat?: (message: ChatMessage) => void;
 	onPrivateMessage?: (message: PrivateMessage) => void;
+	// index du bureau attribue au joueur, null si le salon est plein
+	onMyDesk?: (slotIndex: number | null) => void;
+	onDeskFull?: () => void;
 }
 
 export class NetworkClient {
 	engine: GameEngine;
 	socket: Socket | null = null;
 	playerId: string | null = null;
+	mySlotIndex: number | null = null;
 	otherPlayers = new Map<string, PlayerMesh>();
 	serverUrl: string;
 
@@ -29,23 +35,18 @@ export class NetworkClient {
 	private onStatus: (connected: boolean) => void;
 	private onChat: (message: ChatMessage) => void;
 	private onPrivateMessage: (message: PrivateMessage) => void;
+	private onMyDesk: (slotIndex: number | null) => void;
+	private onDeskFull: () => void;
 
-	constructor(
-		engine: GameEngine,
-		{
-			url,
-			guestUsername,
-			onStatus,
-			onChat,
-			onPrivateMessage,
-		}: NetworkOptions = {}
-	) {
+	constructor(engine: GameEngine, options: NetworkOptions = {}) {
 		this.engine = engine;
-		this.serverUrl = url || 'http://localhost:3000';
-		this.guestUsername = guestUsername;
-		this.onStatus = onStatus || (() => {});
-		this.onChat = onChat || (() => {});
-		this.onPrivateMessage = onPrivateMessage || (() => {});
+		this.serverUrl = options.url || 'http://localhost:3000';
+		this.guestUsername = options.guestUsername;
+		this.onStatus = options.onStatus ?? (() => {});
+		this.onChat = options.onChat ?? (() => {});
+		this.onPrivateMessage = options.onPrivateMessage ?? (() => {});
+		this.onMyDesk = options.onMyDesk ?? (() => {});
+		this.onDeskFull = options.onDeskFull ?? (() => {});
 
 		this.init();
 	}
@@ -55,7 +56,7 @@ export class NetworkClient {
 			transports: ['websocket', 'polling'],
 			withCredentials: true,
 
-			// Utilisé uniquement lorsque le joueur n'est pas connecté.
+			// utilise uniquement lorsque le joueur n'est pas connecte
 			auth: {
 				guestUsername: this.guestUsername,
 			},
@@ -66,6 +67,7 @@ export class NetworkClient {
 		});
 
 		this.bindSocketEvents();
+		this.bindDeskEvents();
 	}
 
 	private bindSocketEvents() {
@@ -79,8 +81,10 @@ export class NetworkClient {
 		socket.on('init', (data: { playerId: string; player: PlayerData }) => {
 			this.playerId = data.playerId;
 
-			if (this.engine.player && data.player.color) {
-				this.engine.player.material.color.setHex(data.player.color);
+			if (data.player.color) {
+				this.engine.player.geometry = this.engine.avatarGeometryFor(
+					data.player.color
+				);
 			}
 
 			if (
@@ -140,16 +144,69 @@ export class NetworkClient {
 		});
 	}
 
+	private bindDeskEvents() {
+		const socket = this.socket;
+		if (!socket) return;
+
+		socket.on(
+			'deskList',
+			(data: { mySlotIndex: number | null; desks: DeskSummary[] }) => {
+				data.desks.forEach((desk) => {
+					if (desk.userId && desk.username) {
+						this.engine.desks.setOccupant(desk.slotIndex, {
+							userId: desk.userId,
+							username: desk.username,
+						});
+					} else {
+						this.engine.desks.clearOccupant(desk.slotIndex);
+					}
+
+					this.engine.desks.setContent(desk.slotIndex, desk.content);
+				});
+
+				this.mySlotIndex = data.mySlotIndex;
+				this.onMyDesk(data.mySlotIndex);
+			}
+		);
+
+		socket.on(
+			'deskAssigned',
+			(data: {
+				slotIndex: number;
+				userId: number;
+				username: string;
+				content: { files: number; notes: number };
+			}) => {
+				this.engine.desks.setOccupant(data.slotIndex, {
+					userId: data.userId,
+					username: data.username,
+				});
+				this.engine.desks.setContent(data.slotIndex, data.content);
+			}
+		);
+
+		socket.on('deskReleased', (data: { slotIndex: number }) => {
+			this.engine.desks.clearOccupant(data.slotIndex);
+		});
+
+		socket.on(
+			'deskContent',
+			(data: {
+				slotIndex: number;
+				content: { files: number; notes: number };
+			}) => {
+				this.engine.desks.setContent(data.slotIndex, data.content);
+			}
+		);
+
+		socket.on('deskFull', () => this.onDeskFull());
+	}
+
 	private addOtherPlayer(playerData: PlayerData) {
 		if (this.otherPlayers.has(playerData.id)) return;
 
-		const geometry = new THREE.BoxGeometry(10, 10, 10);
-
-		const material = new THREE.MeshStandardMaterial({
-			color: playerData.color || 0xff6b6b,
-		});
-
-		const mesh = new THREE.Mesh(geometry, material) as PlayerMesh;
+		const geometry = this.engine.avatarGeometryFor(playerData.color);
+		const mesh = new THREE.Mesh(geometry, voxelMaterial()) as PlayerMesh;
 
 		mesh.position.set(playerData.x, playerData.y, playerData.z);
 
@@ -162,21 +219,22 @@ export class NetworkClient {
 		this.addPlayerLabel(mesh, playerData.username);
 	}
 
+	// la geometrie appartient au registre voxel, seul le label est a liberer
+	private disposeLabel(player: PlayerMesh) {
+		const label = player.userData.label;
+		if (!label) return;
+
+		label.material.map?.dispose();
+		label.material.dispose();
+	}
+
 	private removeOtherPlayer(playerId: string) {
 		const player = this.otherPlayers.get(playerId);
 
 		if (!player) return;
 
 		this.engine.scene.remove(player);
-
-		player.geometry.dispose();
-
-		if (Array.isArray(player.material)) {
-			player.material.forEach((material) => material.dispose());
-		} else {
-			player.material.dispose();
-		}
-
+		this.disposeLabel(player);
 		this.otherPlayers.delete(playerId);
 	}
 
@@ -206,7 +264,7 @@ export class NetworkClient {
 		);
 
 		sprite.scale.set(20, 5, 1);
-		sprite.position.y = 15;
+		sprite.position.y = 20;
 
 		mesh.add(sprite);
 		mesh.userData.label = sprite;
@@ -230,9 +288,22 @@ export class NetworkClient {
 		this.socket.emit('chatMessage', trimmedMessage);
 	}
 
+	requestDeskContent(slotIndex: number) {
+		if (!this.socket?.connected) return;
+		this.socket.emit('deskContent', { slotIndex });
+	}
+
 	update() {
 		this.otherPlayers.forEach((player) => {
 			if (!player.targetPos) return;
+
+			// l'avatar regarde dans le sens du deplacement
+			const dx = player.targetPos.x - player.position.x;
+			const dz = player.targetPos.z - player.position.z;
+
+			if (Math.abs(dx) > 0.5 || Math.abs(dz) > 0.5) {
+				player.rotation.y = Math.atan2(dx, dz);
+			}
 
 			player.position.lerp(player.targetPos, 0.15);
 
@@ -252,13 +323,7 @@ export class NetworkClient {
 
 		this.otherPlayers.forEach((player) => {
 			this.engine.scene.remove(player);
-			player.geometry.dispose();
-
-			if (Array.isArray(player.material)) {
-				player.material.forEach((material) => material.dispose());
-			} else {
-				player.material.dispose();
-			}
+			this.disposeLabel(player);
 		});
 
 		this.otherPlayers.clear();

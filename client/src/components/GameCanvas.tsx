@@ -10,6 +10,7 @@ import { SOCKET_URL } from '@/lib/config';
 import { api } from '@/lib/api';
 import { MOCK_CHAT_MESSAGES } from '@/mocks/chatMessages';
 import DebugOverlay from '@/components/DebugOverlay';
+import DeskOverlay, { type DeskTarget } from '@/components/DeskOverlay';
 import ChatBox from './ChatBox';
 import ChatBubble, { type ChatBubbleData } from './ChatBubble';
 
@@ -32,6 +33,7 @@ export default function GameCanvas() {
 	const joyBaseRef = useRef<HTMLDivElement>(null);
 	const joyStickRef = useRef<HTMLDivElement>(null);
 	const networkRef = useRef<NetworkClient | null>(null);
+	const engineRef = useRef<GameEngine | null>(null);
 	const bubbleCounterRef = useRef(0);
 
 	const [connected, setConnected] = useState(false);
@@ -39,6 +41,18 @@ export default function GameCanvas() {
 	const [bubbles, setBubbles] = useState<ChatBubbleData[]>([]);
 	const [username, setUsername] = useState('');
 	const [wireframe, setWireframe] = useState(false);
+	const [mySlotIndex, setMySlotIndex] = useState<number | null>(null);
+	const [targetedDesk, setTargetedDesk] = useState<DeskTarget | null>(null);
+	const [openDesk, setOpenDesk] = useState<DeskTarget | null>(null);
+
+	// le moteur ignore le clavier tant que le panneau est ouvert
+	useEffect(() => {
+		if (engineRef.current) {
+			engineRef.current.inputLocked = openDesk !== null;
+		}
+	}, [openDesk]);
+
+	const closeDesk = useCallback(() => setOpenDesk(null), []);
 
 	const removeBubble = useCallback((bubbleId: string) => {
 		setBubbles((currentBubbles) =>
@@ -134,10 +148,31 @@ export default function GameCanvas() {
 
 			setUsername(effectiveUsername);
 
+			// le moteur ne connait pas react, il remonte un descripteur plat
+			const toTarget = (desk: {
+				slotIndex: number;
+				occupant: { username: string } | null;
+				content: { files: number; notes: number };
+			}): DeskTarget => ({
+				slotIndex: desk.slotIndex,
+				username: desk.occupant?.username ?? null,
+				files: desk.content.files,
+				notes: desk.content.notes,
+				isMine: desk.slotIndex === networkRef.current?.mySlotIndex,
+			});
+
 			engine = new GameEngine(containerRef.current, {
 				joyBase: joyBaseRef.current,
 				joyStick: joyStickRef.current,
+				onDeskTargetChange: (desk) =>
+					setTargetedDesk(desk ? toTarget(desk) : null),
+				onOpenDesk: (desk) => {
+					networkRef.current?.requestDeskContent(desk.slotIndex);
+					setOpenDesk(toTarget(desk));
+				},
 			});
+
+			engineRef.current = engine;
 
 			network = new NetworkClient(engine, {
 				url: SOCKET_URL,
@@ -148,6 +183,7 @@ export default function GameCanvas() {
 				onChat: (message) => {
 					addChatBubble(message);
 				},
+				onMyDesk: setMySlotIndex,
 			});
 
 			networkRef.current = network;
@@ -176,6 +212,7 @@ export default function GameCanvas() {
 			engine?.destroy();
 
 			networkRef.current = null;
+			engineRef.current = null;
 		};
 	}, []);
 
@@ -197,17 +234,24 @@ export default function GameCanvas() {
 
 	return (
 		<>
-			<div id="container" ref={containerRef} />
+			<div
+				id="container"
+				className={openDesk ? 'is-blurred' : undefined}
+				ref={containerRef}
+			/>
 
 			<DebugOverlay
 				enabled
 				wireframe={wireframe}
 				onWireframeChange={setWireframe}
 				infos={{
-					'Chunks chargés': 4,
 					'Joueurs connectés': connected ? 1 : 0,
-					'Position X': 0,
-					'Position Z': 0,
+					'Mon bureau':
+						mySlotIndex === null ? 'aucun' : mySlotIndex + 1,
+					'Bureau visé':
+						targetedDesk === null
+							? 'aucun'
+							: targetedDesk.slotIndex + 1,
 					'Socket connecté': connected,
 				}}
 			/>
@@ -248,6 +292,15 @@ export default function GameCanvas() {
 				Personnaliser mon avatar
 			</button>
 
+			{targetedDesk && !openDesk && (
+				<div className="desk-prompt">
+					Appuyez sur <strong>E</strong> pour ouvrir le bureau
+					{targetedDesk.username
+						? ` de ${targetedDesk.username}`
+						: ' libre'}
+				</div>
+			)}
+
 			<ChatBox messages={messages} onSend={sendChat} />
 
 			<div id="joystick-container" ref={joyContainerRef}>
@@ -255,6 +308,8 @@ export default function GameCanvas() {
 					<div id="joystick-stick" ref={joyStickRef} />
 				</div>
 			</div>
+
+			{openDesk && <DeskOverlay desk={openDesk} onClose={closeDesk} />}
 		</>
 	);
 }

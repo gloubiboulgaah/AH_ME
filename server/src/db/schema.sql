@@ -31,6 +31,22 @@ CREATE TABLE IF NOT EXISTS players (
   last_seen TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- un bureau par emplacement de la map, occupe par au plus un compte
+-- slot_index correspond a l'index dans SALON_LAYOUT.deskSlots cote client
+CREATE TABLE IF NOT EXISTS desks (
+  id SERIAL PRIMARY KEY,
+  room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  slot_index INTEGER NOT NULL,
+  occupant_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  assigned_at TIMESTAMPTZ,
+  UNIQUE (room_id, slot_index)
+);
+
+-- un compte ne tient qu'un bureau a la fois dans une salle
+CREATE UNIQUE INDEX IF NOT EXISTS idx_desks_occupant
+  ON desks (room_id, occupant_user_id)
+  WHERE occupant_user_id IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions (expires_at);
 
 INSERT INTO rooms (slug, name) VALUES ('lobby', 'Lobby')

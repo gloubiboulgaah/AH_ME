@@ -14,6 +14,7 @@ const authService = require('./modules/auth/service');
 const apiRoutes = require('./modules/api/routes');
 const world = require('./modules/world/socket');
 const chat = require('./modules/chat/socket');
+const desk = require('./modules/desk/socket');
 
 const app = express();
 const server = http.createServer(app);
@@ -103,6 +104,7 @@ io.on('connection', (socket) => {
 
 	world.attach(io, socket);
 	chat.attach(io, socket);
+	desk.attach(io, socket);
 
 	socket.on('error', (error) => {
 		console.error(`socket ${socket.id}:`, error);

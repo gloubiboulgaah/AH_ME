@@ -28,14 +28,20 @@ export interface PrivateMessage {
 }
 
 // mesh joueur avec interpolation et label
-export type PlayerMesh = THREE.Mesh<
-	THREE.BoxGeometry,
-	THREE.MeshStandardMaterial
-> & {
-	targetPos: THREE.Vector3 | null;
+// la geometrie vient du registre voxel, elle est partagee donc jamais liberee ici
+export type PlayerMesh = THREE.Mesh<THREE.BufferGeometry, THREE.Material> & {
+	// absent tant que le joueur n'a pas recu de position a rejoindre
+	targetPos?: THREE.Vector3 | null;
 	userData: {
 		playerId?: string;
 		username?: string;
 		label?: THREE.Sprite;
 	};
 };
+
+export interface DeskSummary {
+	slotIndex: number;
+	userId: number | null;
+	username: string | null;
+	content: { files: number; notes: number };
+}
