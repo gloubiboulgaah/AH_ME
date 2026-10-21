@@ -24,6 +24,8 @@ interface NetworkOptions {
 	// index du bureau attribue au joueur, null si le salon est plein
 	onMyDesk?: (slotIndex: number | null) => void;
 	onDeskFull?: () => void;
+	// nombre de joueurs dans le salon, soi compris
+	onPlayerCount?: (count: number) => void;
 }
 
 export class NetworkClient {
@@ -41,6 +43,7 @@ export class NetworkClient {
 	private onPrivateMessage: (message: PrivateMessage) => void;
 	private onMyDesk: (slotIndex: number | null) => void;
 	private onDeskFull: () => void;
+	private onPlayerCount: (count: number) => void;
 
 	constructor(engine: GameEngine, options: NetworkOptions = {}) {
 		this.engine = engine;
@@ -52,6 +55,7 @@ export class NetworkClient {
 		this.onPrivateMessage = options.onPrivateMessage ?? (() => {});
 		this.onMyDesk = options.onMyDesk ?? (() => {});
 		this.onDeskFull = options.onDeskFull ?? (() => {});
+		this.onPlayerCount = options.onPlayerCount ?? (() => {});
 
 		this.init();
 	}
@@ -82,7 +86,10 @@ export class NetworkClient {
 		if (!socket) return;
 
 		socket.on('connect', () => this.onStatus(true));
-		socket.on('disconnect', () => this.onStatus(false));
+		socket.on('disconnect', () => {
+			this.onStatus(false);
+			this.onPlayerCount(0);
+		});
 		socket.on('connect_error', () => this.onStatus(false));
 
 		socket.on('init', (data: { playerId: string; player: PlayerData }) => {
@@ -111,10 +118,12 @@ export class NetworkClient {
 					this.addOtherPlayer(player);
 				}
 			});
+			this.emitPlayerCount();
 		});
 
 		socket.on('playerJoined', (player: PlayerData) => {
 			this.addOtherPlayer(player);
+			this.emitPlayerCount();
 		});
 
 		socket.on(
@@ -134,6 +143,7 @@ export class NetworkClient {
 
 		socket.on('playerLeft', (playerId: string) => {
 			this.removeOtherPlayer(playerId);
+			this.emitPlayerCount();
 		});
 
 		socket.on('chatMessage', (data: ChatMessage) => {
@@ -209,6 +219,10 @@ export class NetworkClient {
 		);
 
 		socket.on('deskFull', () => this.onDeskFull());
+	}
+
+	private emitPlayerCount() {
+		this.onPlayerCount(this.otherPlayers.size + 1);
 	}
 
 	private addOtherPlayer(playerData: PlayerData) {

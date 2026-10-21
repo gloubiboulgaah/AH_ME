@@ -46,6 +46,9 @@ interface JoystickState {
 // la case suivante (24)
 const DESK_REACH = TILE * 1.6;
 
+// hauteur ou s'accroche une bulle de chat, juste au-dessus du pseudo
+const BUBBLE_ANCHOR_Y = 24;
+
 // moteur three.js, vue iso ortho
 // la boucle de rendu reste ici, pas de r3f (cf page archi notion)
 export class GameEngine {
@@ -398,6 +401,28 @@ export class GameEngine {
 
 		// l'avatar regarde dans le sens du deplacement
 		this.player.rotation.y = Math.atan2(dx, dz);
+	}
+
+	// point au-dessus de la tete d'un joueur, en pixels dans la fenetre
+	// null si le joueur n'est pas (ou plus) dans la scene
+	screenPositionOf(playerId: string): { x: number; y: number } | null {
+		const mesh =
+			playerId === this.network?.playerId
+				? this.player
+				: this.network?.otherPlayers.get(playerId);
+		if (!mesh) return null;
+
+		const point = new THREE.Vector3(
+			mesh.position.x,
+			BUBBLE_ANCHOR_Y,
+			mesh.position.z
+		).project(this.camera);
+		const rect = this.renderer.domElement.getBoundingClientRect();
+
+		return {
+			x: rect.left + ((point.x + 1) / 2) * rect.width,
+			y: rect.top + ((1 - point.y) / 2) * rect.height,
+		};
 	}
 
 	private updateDeskTarget() {

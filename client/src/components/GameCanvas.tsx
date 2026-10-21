@@ -9,7 +9,6 @@ import type { ChatMessage } from '@/game/types';
 import { SOCKET_URL } from '@/lib/config';
 import { api } from '@/lib/api';
 import { loadAvatar } from '@/lib/avatar';
-import { MOCK_CHAT_MESSAGES } from '@/mocks/chatMessages';
 import DebugOverlay from '@/components/DebugOverlay';
 import DeskOverlay from '@/components/desk/DeskOverlay';
 import ChatBox from './ChatBox';
@@ -45,7 +44,8 @@ export default function GameCanvas() {
 	const bubbleCounterRef = useRef(0);
 
 	const [connected, setConnected] = useState(false);
-	const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT_MESSAGES);
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [playerCount, setPlayerCount] = useState(0);
 	const [bubbles, setBubbles] = useState<ChatBubbleData[]>([]);
 	const [username, setUsername] = useState('');
 	const [wireframe, setWireframe] = useState(false);
@@ -79,27 +79,11 @@ export default function GameCanvas() {
 		);
 	}, []);
 
-	const getMockScreenPosition = (
-		playerId: string
-	): { x: number; y: number } => {
-		let hash = 0;
-
-		for (let index = 0; index < playerId.length; index += 1) {
-			hash = (hash * 31 + playerId.charCodeAt(index)) >>> 0;
-		}
-
-		const availableWidth = Math.max(window.innerWidth - 400, 200);
-
-		const availableHeight = Math.max(window.innerHeight - 350, 180);
-
-		return {
-			x: 200 + (hash % availableWidth),
-			y: 170 + (Math.floor(hash / 100) % availableHeight),
-		};
-	};
-
+	// la bulle s'accroche au-dessus de l'avatar qui parle, au moment ou le
+	// message arrive ; rien si le joueur n'est plus dans la scene
 	const addChatBubble = (message: ChatMessage) => {
-		const position = getMockScreenPosition(message.playerId);
+		const position = engineRef.current?.screenPositionOf(message.playerId);
+		if (!position) return;
 
 		bubbleCounterRef.current += 1;
 
@@ -199,9 +183,16 @@ export default function GameCanvas() {
 					: storedGuestUsername || undefined,
 				avatar: loadAvatar(),
 				onStatus: setConnected,
+				// le serveur renvoie aussi nos propres messages, c'est la seule
+				// source de la liste et des bulles
 				onChat: (message) => {
+					setMessages((previousMessages) => [
+						...previousMessages.slice(-MAX_MESSAGES + 1),
+						message,
+					]);
 					addChatBubble(message);
 				},
+				onPlayerCount: setPlayerCount,
 				onMyDesk: setMySlotIndex,
 			});
 
@@ -236,19 +227,7 @@ export default function GameCanvas() {
 	}, []);
 
 	const sendChat = (message: string) => {
-		const mockMessage: ChatMessage = {
-			playerId: 'mock-current-user',
-			username,
-			message,
-			timestamp: Date.now(),
-		};
-
-		setMessages((previousMessages) => [
-			...previousMessages.slice(-MAX_MESSAGES + 1),
-			mockMessage,
-		]);
-
-		addChatBubble(mockMessage);
+		networkRef.current?.sendChatMessage(message);
 	};
 
 	return (
@@ -264,7 +243,7 @@ export default function GameCanvas() {
 				wireframe={wireframe}
 				onWireframeChange={setWireframe}
 				infos={{
-					'Joueurs connectés': connected ? 1 : 0,
+					'Joueurs connectés': playerCount,
 					'Mon bureau':
 						mySlotIndex === null ? 'aucun' : mySlotIndex + 1,
 					'Bureau visé':
