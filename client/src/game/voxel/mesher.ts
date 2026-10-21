@@ -10,16 +10,17 @@ interface Face {
 	corners: Array<[number, number, number]>;
 }
 
-// ordre des coins pour que la normale sorte du cube
+// coins dans le sens anti-horaire vus de l'exterieur, sinon three.js
+// prend la face pour une face arriere et la masque
 const FACES: Face[] = [
 	{
 		offset: [1, 0, 0],
 		normal: [1, 0, 0],
 		corners: [
 			[1, 0, 0],
-			[1, 0, 1],
-			[1, 1, 1],
 			[1, 1, 0],
+			[1, 1, 1],
+			[1, 0, 1],
 		],
 	},
 	{
@@ -27,9 +28,9 @@ const FACES: Face[] = [
 		normal: [-1, 0, 0],
 		corners: [
 			[0, 0, 1],
-			[0, 0, 0],
-			[0, 1, 0],
 			[0, 1, 1],
+			[0, 1, 0],
+			[0, 0, 0],
 		],
 	},
 	{
@@ -57,9 +58,9 @@ const FACES: Face[] = [
 		normal: [0, 0, 1],
 		corners: [
 			[1, 0, 1],
-			[0, 0, 1],
-			[0, 1, 1],
 			[1, 1, 1],
+			[0, 1, 1],
+			[0, 0, 1],
 		],
 	},
 	{
@@ -67,9 +68,9 @@ const FACES: Face[] = [
 		normal: [0, 0, -1],
 		corners: [
 			[0, 0, 0],
-			[1, 0, 0],
-			[1, 1, 0],
 			[0, 1, 0],
+			[1, 1, 0],
+			[1, 0, 0],
 		],
 	},
 ];

@@ -3,12 +3,20 @@
 import * as THREE from 'three';
 import type { NetworkClient } from './network';
 import type { InteractionManager } from './interactions';
+import type { PlayerData } from './types';
+import { animateAvatar } from './avatarMotion';
 import { VoxelRegistry, voxelMaterial } from './voxel/registry';
 import { buildAvatarModel } from './voxel/models/avatar';
 import {
+	buildArmchairModel,
+	buildBookshelfModel,
 	buildChairModel,
+	buildCoffeeModel,
+	buildCoolerModel,
 	buildDeskModel,
+	buildLampModel,
 	buildPlantModel,
+	buildRugModel,
 	buildScreenModel,
 } from './voxel/models/furniture';
 import { buildSalon, type SalonBuild } from './salon/builder';
@@ -73,6 +81,7 @@ export class GameEngine {
 	private targetedDesk: DeskInfo | null = null;
 	private targetSignature = '';
 	private cameraOffset = new THREE.Vector3(200, 200, 200);
+	private clock = new THREE.Clock();
 	private rafId: number | null = null;
 	private disposed = false;
 	private cleanups: Array<() => void> = [];
@@ -97,26 +106,44 @@ export class GameEngine {
 		}
 	}
 
-	// bouchons pour l'instant, remplaces par registry.loadInto() quand les
-	// vrais fichiers voxel arrivent
+	// les modeles sont decrits en code (cf docs/VOXEL.md), un fichier .vox
+	// peut toujours en remplacer un avec registry.loadInto()
 	private registerModels() {
 		this.registry.register('avatar', buildAvatarModel());
 		this.registry.register('desk', buildDeskModel());
 		this.registry.register('chair', buildChairModel());
 		this.registry.register('screen', buildScreenModel());
 		this.registry.register('plant', buildPlantModel());
+		this.registry.register('bookshelf', buildBookshelfModel());
+		this.registry.register('coffee', buildCoffeeModel());
+		this.registry.register('cooler', buildCoolerModel());
+		this.registry.register('armchair', buildArmchairModel());
+		this.registry.register('lamp', buildLampModel());
+		this.registry.register('rug', buildRugModel());
 	}
 
-	// un avatar par couleur de joueur, la geometrie est mise en cache
+	// un avatar par combinaison couleur / peau / silhouette, mis en cache
 	// on teinte le tee-shirt plutot que le material, sinon la peau bleuit
-	avatarGeometryFor(color?: number): THREE.BufferGeometry {
-		if (!color) return this.registry.geometry('avatar');
+	avatarGeometryFor(
+		player: Pick<PlayerData, 'color' | 'skin' | 'build'>
+	): THREE.BufferGeometry {
+		const { color, skin, build } = player;
+		if (!color && !skin && !build) return this.registry.geometry('avatar');
 
-		const hex = color.toString(16).padStart(6, '0');
-		const key = `avatar-${hex}`;
+		const shirt = color
+			? `#${color.toString(16).padStart(6, '0')}`
+			: undefined;
+		const key = `avatar-${shirt ?? ''}-${skin ?? ''}-${build ?? ''}`;
 
 		if (!this.registry.has(key)) {
-			this.registry.register(key, buildAvatarModel({ shirt: `#${hex}` }));
+			this.registry.register(
+				key,
+				buildAvatarModel({
+					shirt,
+					skin: skin ?? undefined,
+					build: build ?? undefined,
+				})
+			);
 		}
 
 		return this.registry.geometry(key);
@@ -142,8 +169,11 @@ export class GameEngine {
 			2000
 		);
 
-		this.scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-		const directional = new THREE.DirectionalLight(0xffffff, 0.55);
+		// three r160 eclaire en mode physique, les intensites sont divisees
+		// par pi par rapport a l'ancien mode, d'ou des valeurs au-dessus de 1
+		// le ciel et le sol teintent legerement les faces pour les distinguer
+		this.scene.add(new THREE.HemisphereLight(0xfff4e0, 0x6b5a48, 2.2));
+		const directional = new THREE.DirectionalLight(0xffffff, 1.6);
 		directional.position.set(120, 220, 140);
 		this.scene.add(directional);
 
@@ -202,9 +232,15 @@ export class GameEngine {
 	}
 
 	// la camera suit le joueur, sinon il sort du cadre dans les coins
+	// y ignore pour que la camera ne saute pas avec l'avatar
 	private syncCamera() {
-		this.camera.position.copy(this.player.position).add(this.cameraOffset);
-		this.camera.lookAt(this.player.position);
+		const focus = new THREE.Vector3(
+			this.player.position.x,
+			0,
+			this.player.position.z
+		);
+		this.camera.position.copy(focus).add(this.cameraOffset);
+		this.camera.lookAt(focus);
 	}
 
 	private bindEvents() {
@@ -358,7 +394,7 @@ export class GameEngine {
 		// murs et mobilier bloquent le deplacement
 		if (!isWalkable(newX, newZ)) return;
 
-		this.targetPos = new THREE.Vector3(newX, this.player.position.y, newZ);
+		this.targetPos = new THREE.Vector3(newX, 0, newZ);
 
 		// l'avatar regarde dans le sens du deplacement
 		this.player.rotation.y = Math.atan2(dx, dz);
@@ -391,7 +427,11 @@ export class GameEngine {
 		if (this.targetPos) {
 			this.player.position.lerp(this.targetPos, this.moveLerp);
 
-			if (this.player.position.distanceToSquared(this.targetPos) < 0.01) {
+			// distance au sol, y bouge avec l'animation de marche
+			const dx = this.targetPos.x - this.player.position.x;
+			const dz = this.targetPos.z - this.player.position.z;
+
+			if (dx * dx + dz * dz < 0.01) {
 				this.player.position.copy(this.targetPos);
 				if (this.network) {
 					this.network.sendPlayerPosition(
@@ -408,9 +448,12 @@ export class GameEngine {
 			this.syncCamera();
 		}
 
+		const time = this.clock.getElapsedTime();
+		animateAvatar(this.player, this.targetPos !== null, time);
+
 		this.updateDeskTarget();
 
-		if (this.network) this.network.update();
+		if (this.network) this.network.update(time);
 		if (this.interactions) this.interactions.update();
 
 		this.renderer.render(this.scene, this.camera);
