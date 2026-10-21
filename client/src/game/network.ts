@@ -3,7 +3,9 @@
 import * as THREE from 'three';
 import { io, type Socket } from 'socket.io-client';
 import type { GameEngine } from './engine';
+import type { AvatarAppearance } from '@/lib/avatar';
 import { voxelMaterial } from './voxel/registry';
+import { animateAvatar } from './avatarMotion';
 import type {
 	ChatMessage,
 	DeskSummary,
@@ -15,6 +17,7 @@ import type {
 interface NetworkOptions {
 	url?: string;
 	guestUsername?: string;
+	avatar?: AvatarAppearance | null;
 	onStatus?: (connected: boolean) => void;
 	onChat?: (message: ChatMessage) => void;
 	onPrivateMessage?: (message: PrivateMessage) => void;
@@ -32,6 +35,7 @@ export class NetworkClient {
 	serverUrl: string;
 
 	private guestUsername?: string;
+	private avatar: AvatarAppearance | null;
 	private onStatus: (connected: boolean) => void;
 	private onChat: (message: ChatMessage) => void;
 	private onPrivateMessage: (message: PrivateMessage) => void;
@@ -42,6 +46,7 @@ export class NetworkClient {
 		this.engine = engine;
 		this.serverUrl = options.url || 'http://localhost:3000';
 		this.guestUsername = options.guestUsername;
+		this.avatar = options.avatar ?? null;
 		this.onStatus = options.onStatus ?? (() => {});
 		this.onChat = options.onChat ?? (() => {});
 		this.onPrivateMessage = options.onPrivateMessage ?? (() => {});
@@ -59,6 +64,8 @@ export class NetworkClient {
 			// utilise uniquement lorsque le joueur n'est pas connecte
 			auth: {
 				guestUsername: this.guestUsername,
+				// valide cote serveur, sauvegarde si le joueur a un compte
+				avatar: this.avatar,
 			},
 
 			reconnection: true,
@@ -81,11 +88,9 @@ export class NetworkClient {
 		socket.on('init', (data: { playerId: string; player: PlayerData }) => {
 			this.playerId = data.playerId;
 
-			if (data.player.color) {
-				this.engine.player.geometry = this.engine.avatarGeometryFor(
-					data.player.color
-				);
-			}
+			this.engine.player.geometry = this.engine.avatarGeometryFor(
+				data.player
+			);
 
 			// y ignore, les modeles voxel sont ancres sur leurs pieds
 			if (
@@ -209,7 +214,7 @@ export class NetworkClient {
 	private addOtherPlayer(playerData: PlayerData) {
 		if (this.otherPlayers.has(playerData.id)) return;
 
-		const geometry = this.engine.avatarGeometryFor(playerData.color);
+		const geometry = this.engine.avatarGeometryFor(playerData);
 		const mesh = new THREE.Mesh(geometry, voxelMaterial()) as PlayerMesh;
 
 		mesh.position.set(playerData.x, 0, playerData.z);
@@ -298,8 +303,9 @@ export class NetworkClient {
 		this.socket.emit('deskContent', { slotIndex, deskId });
 	}
 
-	update() {
+	update(time: number) {
 		this.otherPlayers.forEach((player) => {
+			animateAvatar(player, Boolean(player.targetPos), time);
 			if (!player.targetPos) return;
 
 			// l'avatar regarde dans le sens du deplacement
@@ -312,7 +318,8 @@ export class NetworkClient {
 
 			player.position.lerp(player.targetPos, 0.15);
 
-			if (player.position.distanceToSquared(player.targetPos) < 0.01) {
+			// distance au sol, y bouge avec l'animation de marche
+			if (dx * dx + dz * dz < 0.01) {
 				player.position.copy(player.targetPos);
 				player.targetPos = null;
 			}

@@ -8,6 +8,7 @@ import { InteractionManager } from '@/game/interactions';
 import type { ChatMessage } from '@/game/types';
 import { SOCKET_URL } from '@/lib/config';
 import { api } from '@/lib/api';
+import { loadAvatar } from '@/lib/avatar';
 import { MOCK_CHAT_MESSAGES } from '@/mocks/chatMessages';
 import DebugOverlay from '@/components/DebugOverlay';
 import DeskOverlay from '@/components/desk/DeskOverlay';
@@ -196,6 +197,7 @@ export default function GameCanvas() {
 				guestUsername: authenticatedUsername
 					? undefined
 					: storedGuestUsername || undefined,
+				avatar: loadAvatar(),
 				onStatus: setConnected,
 				onChat: (message) => {
 					addChatBubble(message);

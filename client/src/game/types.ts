@@ -1,6 +1,7 @@
 /** @format */
 
 import type * as THREE from 'three';
+import type { AvatarBuild } from './voxel/models/avatar';
 
 export interface PlayerData {
 	id: string;
@@ -10,6 +11,9 @@ export interface PlayerData {
 	y: number;
 	z: number;
 	color: number;
+	// apparence choisie a la personnalisation, absente = avatar par defaut
+	skin?: string | null;
+	build?: AvatarBuild | null;
 	connected: number;
 }
 

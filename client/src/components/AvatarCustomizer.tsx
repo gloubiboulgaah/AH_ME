@@ -39,6 +39,9 @@ export type AvatarCustomization = {
 };
 
 type AvatarCustomizerProps = {
+	// derniere apparence enregistree, pour ne pas repartir de zero
+	initialSkinTone?: string;
+	initialSilhouette?: Silhouette;
 	onConfirm: (customization: AvatarCustomization) => void;
 };
 
@@ -64,10 +67,19 @@ const SILHOUETTES: Array<{
 	},
 ];
 
-export default function AvatarCustomizer({ onConfirm }: AvatarCustomizerProps) {
-	const [skinTone, setSkinTone] = useState<SkinTone>(SKIN_TONES[1].color);
+export default function AvatarCustomizer({
+	initialSkinTone,
+	initialSilhouette,
+	onConfirm,
+}: AvatarCustomizerProps) {
+	const [skinTone, setSkinTone] = useState<SkinTone>(
+		SKIN_TONES.find((tone) => tone.color === initialSkinTone)?.color ??
+			SKIN_TONES[1].color
+	);
 
-	const [silhouette, setSilhouette] = useState<Silhouette>('standard');
+	const [silhouette, setSilhouette] = useState<Silhouette>(
+		initialSilhouette ?? 'standard'
+	);
 
 	const selectedTone = SKIN_TONES.find((tone) => tone.color === skinTone);
 

@@ -37,6 +37,11 @@ CREATE TABLE IF NOT EXISTS players (
     last_seen TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- apparence choisie a la personnalisation de l'avatar
+ALTER TABLE players ADD COLUMN IF NOT EXISTS skin VARCHAR(7);
+
+ALTER TABLE players ADD COLUMN IF NOT EXISTS build VARCHAR(10);
+
 -- Serveur principal de l'application
 CREATE TABLE IF NOT EXISTS servers (
     id SERIAL PRIMARY KEY,

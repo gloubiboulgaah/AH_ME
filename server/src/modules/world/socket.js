@@ -11,6 +11,22 @@ function randomColor() {
 	return COLORS[Math.floor(Math.random() * COLORS.length)];
 }
 
+const BUILDS = ['slim', 'standard', 'large'];
+
+// apparence envoyee par le client au handshake, ignoree si invalide
+function parseAvatar(raw) {
+	if (!raw || typeof raw !== 'object') return null;
+
+	const { skin, build } = raw;
+
+	if (typeof skin !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(skin)) {
+		return null;
+	}
+	if (!BUILDS.includes(build)) return null;
+
+	return { skin, build };
+}
+
 // cache memoire de la salle, la db reste la source de verite pour les comptes
 const players = new Map();
 
@@ -20,6 +36,13 @@ function attach(io, socket) {
 	const init = async () => {
 		const saved = user ? await service.loadPlayer(user.id) : null;
 
+		// le choix du navigateur l'emporte, sinon celui sauvegarde sur le compte
+		const avatar =
+			parseAvatar(socket.handshake.auth?.avatar) ||
+			(saved && saved.skin
+				? { skin: saved.skin, build: saved.build }
+				: null);
+
 		const player = {
 			id: socket.id,
 			userId: user ? user.id : null,
@@ -28,6 +51,8 @@ function attach(io, socket) {
 			y: saved ? saved.y : 5,
 			z: saved ? saved.z : 0,
 			color: saved && saved.color ? saved.color : randomColor(),
+			skin: avatar ? avatar.skin : null,
+			build: avatar ? avatar.build : null,
 			connected: Date.now(),
 		};
 		players.set(socket.id, player);
