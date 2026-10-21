@@ -193,6 +193,11 @@ export default function GameCanvas() {
 					addChatBubble(message);
 				},
 				onPlayerCount: setPlayerCount,
+				onKicked: () =>
+					navigateRef.current('/servers', {
+						replace: true,
+						state: { kicked: true },
+					}),
 				onMyDesk: setMySlotIndex,
 			});
 

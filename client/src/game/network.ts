@@ -26,6 +26,8 @@ interface NetworkOptions {
 	onDeskFull?: () => void;
 	// nombre de joueurs dans le salon, soi compris
 	onPlayerCount?: (count: number) => void;
+	// le proprietaire du salon nous a exclu, le serveur coupe la socket
+	onKicked?: () => void;
 }
 
 export class NetworkClient {
@@ -44,6 +46,7 @@ export class NetworkClient {
 	private onMyDesk: (slotIndex: number | null) => void;
 	private onDeskFull: () => void;
 	private onPlayerCount: (count: number) => void;
+	private onKicked: () => void;
 
 	constructor(engine: GameEngine, options: NetworkOptions = {}) {
 		this.engine = engine;
@@ -56,6 +59,7 @@ export class NetworkClient {
 		this.onMyDesk = options.onMyDesk ?? (() => {});
 		this.onDeskFull = options.onDeskFull ?? (() => {});
 		this.onPlayerCount = options.onPlayerCount ?? (() => {});
+		this.onKicked = options.onKicked ?? (() => {});
 
 		this.init();
 	}
@@ -219,6 +223,7 @@ export class NetworkClient {
 		);
 
 		socket.on('deskFull', () => this.onDeskFull());
+		socket.on('serverKicked', () => this.onKicked());
 	}
 
 	private emitPlayerCount() {

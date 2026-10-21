@@ -1,16 +1,19 @@
 /** @format */
 
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, type AppServer } from '../lib/api';
 
 export default function ServersPage() {
 	const navigate = useNavigate();
+	const location = useLocation();
+	const kicked = Boolean(
+		(location.state as { kicked?: boolean } | null)?.kicked
+	);
 
 	const [server, setServer] = useState<AppServer | null>(null);
 	const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 	const [inviteCode, setInviteCode] = useState('');
-	const [newInviteCode, setNewInviteCode] = useState('');
 	const [loading, setLoading] = useState(true);
 	const [actionLoading, setActionLoading] = useState(false);
 	const [error, setError] = useState('');
@@ -69,53 +72,6 @@ export default function ServersPage() {
 				err instanceof Error
 					? err.message
 					: 'Impossible de quitter le serveur.'
-			);
-		} finally {
-			setActionLoading(false);
-		}
-	}
-
-	async function handleDelete() {
-		if (!server) return;
-
-		const confirmed = window.confirm(
-			`Supprimer définitivement le serveur « ${server.name} » ?`
-		);
-
-		if (!confirmed) return;
-
-		setError('');
-		setActionLoading(true);
-
-		try {
-			await api.deleteServer(server.id);
-			setServer(null);
-			setNewInviteCode('');
-		} catch (err) {
-			setError(
-				err instanceof Error
-					? err.message
-					: 'Impossible de supprimer le serveur.'
-			);
-		} finally {
-			setActionLoading(false);
-		}
-	}
-
-	async function handleRegenerateInvite() {
-		if (!server) return;
-
-		setError('');
-		setActionLoading(true);
-
-		try {
-			const result = await api.regenerateInviteCode(server.id);
-			setNewInviteCode(result.inviteCode);
-		} catch (err) {
-			setError(
-				err instanceof Error
-					? err.message
-					: "Impossible de régénérer le code d'invitation."
 			);
 		} finally {
 			setActionLoading(false);
@@ -203,6 +159,12 @@ export default function ServersPage() {
 					</div>
 				</div>
 
+				{kicked && !isMember && (
+					<p className="form-error" role="alert">
+						Le propriétaire vous a retiré de ce serveur.
+					</p>
+				)}
+
 				{isOwner && (
 					<p className="server-status">
 						Vous êtes propriétaire de ce serveur.
@@ -226,32 +188,11 @@ export default function ServersPage() {
 						</button>
 
 						{isOwner ? (
-							<>
-								{server.visibility === 'private' && (
-									<button
-										className="btn btn-ghost"
-										type="button"
-										onClick={handleRegenerateInvite}
-										disabled={actionLoading}>
-										Régénérer le code d'invitation
-									</button>
-								)}
-
-								{newInviteCode && (
-									<div className="server-invite-code">
-										<span>Nouveau code d'invitation</span>
-										<strong>{newInviteCode}</strong>
-									</div>
-								)}
-
-								<button
-									className="btn btn-danger"
-									type="button"
-									onClick={handleDelete}
-									disabled={actionLoading}>
-									Supprimer le serveur
-								</button>
-							</>
+							<Link
+								className="btn btn-ghost"
+								to="/servers/settings">
+								Configurer le serveur
+							</Link>
 						) : (
 							<button
 								className="btn btn-ghost"

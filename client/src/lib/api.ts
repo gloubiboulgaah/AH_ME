@@ -131,6 +131,28 @@ export const api = {
 			method: 'DELETE',
 		}),
 
+	// champs absents inchanges ; inviteCode rempli seulement au passage en prive
+	updateServer: (
+		serverId: number,
+		body: {
+			name?: string;
+			visibility?: 'public' | 'private';
+			capacity?: number;
+		}
+	) =>
+		request<{
+			server: Omit<AppServer, 'members' | 'createdAt'>;
+			inviteCode: string | null;
+		}>(`/servers/${serverId}`, {
+			method: 'PATCH',
+			body: JSON.stringify(body),
+		}),
+
+	removeMember: (serverId: number, userId: number) =>
+		request<{ ok: boolean }>(`/servers/${serverId}/members/${userId}`, {
+			method: 'DELETE',
+		}),
+
 	regenerateInviteCode: (serverId: number) =>
 		request<{ ok: boolean; inviteCode: string }>(
 			`/servers/${serverId}/invite/regenerate`,

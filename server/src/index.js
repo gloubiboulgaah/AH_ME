@@ -59,6 +59,9 @@ const io = new Server(server, {
 	},
 });
 
+// les routes http en ont besoin pour prevenir les joueurs connectes
+app.set('io', io);
+
 // Cherche d'abord un utilisateur connecté grâce au cookie.
 // Sinon, utilise le pseudo invité envoyé dans le handshake Socket.io.
 io.use(async (socket, next) => {

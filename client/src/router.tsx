@@ -8,6 +8,7 @@ import PlayPage from './pages/PlayPage';
 import CustomizePage from './pages/CustomizePage';
 import ServersPage from './pages/ServersPage';
 import CreateServerPage from './pages/CreateServerPage';
+import ServerSettingsPage from './pages/ServerSettingsPage';
 
 export const router = createBrowserRouter([
 	{ path: '/', element: <HomePage /> },
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
 	{ path: '/customize', element: <CustomizePage /> },
 	{ path: '/servers', element: <ServersPage /> },
 	{ path: '/servers/create', element: <CreateServerPage /> },
+	{ path: '/servers/settings', element: <ServerSettingsPage /> },
 	{
 		path: '*',
 		element: (

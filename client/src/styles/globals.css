@@ -1760,3 +1760,97 @@ body {
 	width: 100%;
 	margin-top: var(--space-4);
 }
+
+/* configuration du serveur */
+
+.server-settings {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5);
+}
+
+.server-settings .server-page-header {
+	margin-bottom: 0;
+}
+
+.server-section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	padding-top: var(--space-5);
+	border-top: 1px solid var(--color-border);
+}
+
+.server-section h2 {
+	margin: 0;
+	font-size: var(--font-size-md);
+}
+
+.server-success {
+	margin: 0;
+	color: var(--color-success);
+	font-size: 13px;
+}
+
+.server-members {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.server-member {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	padding: var(--space-3);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-md);
+	background: var(--color-surface-light);
+}
+
+.server-member-info {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	min-width: 0;
+}
+
+.server-member-info strong {
+	overflow-wrap: anywhere;
+}
+
+.server-member-info span {
+	color: var(--color-text-muted);
+	font-size: var(--font-size-xs);
+}
+
+.server-member-actions {
+	display: flex;
+	gap: var(--space-2);
+	flex-shrink: 0;
+}
+
+.btn.btn-small {
+	min-height: 0;
+	padding: var(--space-2) var(--space-3);
+	font-size: var(--font-size-xs);
+}
+
+.server-danger {
+	border-top-color: var(--color-danger);
+}
+
+.server-danger h2 {
+	color: var(--color-danger);
+}
+
+@media (max-width: 520px) {
+	.server-member {
+		flex-direction: column;
+		align-items: stretch;
+	}
+}

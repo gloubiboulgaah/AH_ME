@@ -48,7 +48,13 @@ router.get('/current', async (req, res, next) => {
 				ownerId: server.owner_id,
 				capacity: server.capacity,
 				visibility: server.visibility,
-				members: server.members,
+				// meme forme que ServerMember cote client
+				members: server.members.map((member) => ({
+					id: member.id,
+					username: member.username,
+					role: member.role,
+					joinedAt: member.joined_at,
+				})),
 			},
 		});
 	} catch (err) {
@@ -100,6 +106,88 @@ router.delete('/:id', async (req, res, next) => {
 		}
 
 		await serverService.deleteServer(serverId, user.id);
+
+		res.json({
+			ok: true,
+		});
+	} catch (err) {
+		next(err);
+	}
+});
+
+router.patch('/:id', async (req, res, next) => {
+	try {
+		const user = await requireUser(req, res);
+
+		if (!user) return;
+
+		const serverId = Number(req.params.id);
+
+		if (!Number.isInteger(serverId)) {
+			return res.status(400).json({
+				code: 'INVALID_SERVER_ID',
+				message: 'Identifiant de serveur invalide.',
+			});
+		}
+
+		const server = await serverService.updateServer(serverId, user.id, {
+			name: req.body?.name,
+			capacity: req.body?.capacity,
+			visibility: req.body?.visibility,
+		});
+
+		res.json({
+			server: {
+				id: server.id,
+				name: server.name,
+				ownerId: server.owner_id,
+				capacity: server.capacity,
+				visibility: server.visibility,
+			},
+			inviteCode: server.inviteCode,
+		});
+	} catch (err) {
+		next(err);
+	}
+});
+
+router.delete('/:id/members/:userId', async (req, res, next) => {
+	try {
+		const user = await requireUser(req, res);
+
+		if (!user) return;
+
+		const serverId = Number(req.params.id);
+		const memberId = Number(req.params.userId);
+
+		if (!Number.isInteger(serverId) || !Number.isInteger(memberId)) {
+			return res.status(400).json({
+				code: 'INVALID_ID',
+				message: 'Identifiant invalide.',
+			});
+		}
+
+		await serverService.removeMember(serverId, user.id, memberId);
+
+		const released = await deskService.release(memberId);
+		const io = req.app.get('io');
+
+		if (io) {
+			if (released) {
+				io.emit('deskReleased', { slotIndex: released.slotIndex });
+			}
+
+			// le membre exclu sort du salon tout de suite, pas a sa prochaine
+			// reconnexion
+			const sockets = await io.fetchSockets();
+
+			sockets
+				.filter((socket) => socket.data.user?.id === memberId)
+				.forEach((socket) => {
+					socket.emit('serverKicked');
+					socket.disconnect(true);
+				});
+		}
 
 		res.json({
 			ok: true,

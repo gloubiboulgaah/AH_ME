@@ -22,6 +22,46 @@ function normalizeVisibility(visibility) {
 	return visibility === 'private' ? 'private' : 'public';
 }
 
+function validateName(name) {
+	const cleanName = String(name || '').trim();
+
+	if (!cleanName) {
+		throw httpError(
+			400,
+			'INVALID_SERVER_NAME',
+			'Le nom du serveur est obligatoire.'
+		);
+	}
+
+	if (cleanName.length > 128) {
+		throw httpError(
+			400,
+			'INVALID_SERVER_NAME',
+			'Le nom du serveur ne peut pas dépasser 128 caractères.'
+		);
+	}
+
+	return cleanName;
+}
+
+function validateCapacity(capacity) {
+	const numericCapacity = Number(capacity);
+
+	if (
+		!Number.isInteger(numericCapacity) ||
+		numericCapacity < 2 ||
+		numericCapacity > 50
+	) {
+		throw httpError(
+			400,
+			'INVALID_CAPACITY',
+			'La capacité doit être comprise entre 2 et 50.'
+		);
+	}
+
+	return numericCapacity;
+}
+
 async function getCurrentServer() {
 	const { rows } = await db.query(`
                 SELECT
@@ -68,37 +108,8 @@ async function createServer({
 	visibility = 'public',
 	ownerId,
 }) {
-	const cleanName = String(name || '').trim();
-
-	if (!cleanName) {
-		throw httpError(
-			400,
-			'INVALID_SERVER_NAME',
-			'Le nom du serveur est obligatoire.'
-		);
-	}
-
-	if (cleanName.length > 128) {
-		throw httpError(
-			400,
-			'INVALID_SERVER_NAME',
-			'Le nom du serveur ne peut pas dépasser 128 caractères.'
-		);
-	}
-
-	const numericCapacity = Number(capacity);
-
-	if (
-		!Number.isInteger(numericCapacity) ||
-		numericCapacity < 2 ||
-		numericCapacity > 50
-	) {
-		throw httpError(
-			400,
-			'INVALID_CAPACITY',
-			'La capacité doit être comprise entre 2 et 50.'
-		);
-	}
+	const cleanName = validateName(name);
+	const numericCapacity = validateCapacity(capacity);
 
 	const cleanVisibility = normalizeVisibility(visibility);
 	const client = await db.pool.connect();
@@ -430,6 +441,133 @@ async function regenerateInviteCode(serverId, userId) {
 	return inviteCode;
 }
 
+// serveur actif dont userId est proprietaire, sinon erreur explicite
+async function getOwnedServer(serverId, userId, action) {
+	const { rows } = await db.query(
+		`
+                SELECT id, name, owner_id, capacity, visibility, invite_code_hash
+                FROM servers
+                WHERE id = $1
+                AND is_active = true
+                `,
+		[serverId]
+	);
+
+	const server = rows[0];
+
+	if (!server) {
+		throw httpError(
+			404,
+			'SERVER_NOT_FOUND',
+			'Le serveur demandé est introuvable.'
+		);
+	}
+
+	if (server.owner_id !== userId) {
+		throw httpError(
+			403,
+			'SERVER_OWNER_REQUIRED',
+			`Seul le propriétaire peut ${action}.`
+		);
+	}
+
+	return server;
+}
+
+// les champs absents gardent leur valeur
+// passer en prive genere un code, retourne une seule fois comme a la creation
+async function updateServer(serverId, userId, changes = {}) {
+	const server = await getOwnedServer(
+		serverId,
+		userId,
+		'modifier le serveur'
+	);
+
+	const name =
+		changes.name === undefined ? server.name : validateName(changes.name);
+	const capacity =
+		changes.capacity === undefined
+			? server.capacity
+			: validateCapacity(changes.capacity);
+	const visibility =
+		changes.visibility === undefined
+			? server.visibility
+			: normalizeVisibility(changes.visibility);
+
+	const countResult = await db.query(
+		`
+                SELECT COUNT(*)::INTEGER AS count
+                FROM server_members
+                WHERE server_id = $1
+                `,
+		[serverId]
+	);
+
+	const memberCount = countResult.rows[0].count;
+
+	if (capacity < memberCount) {
+		throw httpError(
+			409,
+			'CAPACITY_TOO_LOW',
+			`La capacité ne peut pas être inférieure au nombre de membres (${memberCount}).`
+		);
+	}
+
+	let inviteCode = null;
+	let inviteCodeHash = server.invite_code_hash;
+
+	if (visibility === 'public') {
+		inviteCodeHash = null;
+	} else if (server.visibility !== 'private' || !inviteCodeHash) {
+		inviteCode = generateInviteCode();
+		inviteCodeHash = hashInviteCode(inviteCode);
+	}
+
+	const { rows } = await db.query(
+		`
+                UPDATE servers
+                SET name = $1, capacity = $2, visibility = $3, invite_code_hash = $4
+                WHERE id = $5
+                RETURNING id, name, owner_id, capacity, visibility, created_at
+                `,
+		[name, capacity, visibility, inviteCodeHash, serverId]
+	);
+
+	return {
+		...rows[0],
+		inviteCode,
+	};
+}
+
+async function removeMember(serverId, ownerId, memberId) {
+	await getOwnedServer(serverId, ownerId, 'exclure un membre');
+
+	if (memberId === ownerId) {
+		throw httpError(
+			400,
+			'OWNER_CANNOT_BE_REMOVED',
+			'Le propriétaire ne peut pas s’exclure de son serveur.'
+		);
+	}
+
+	const result = await db.query(
+		`
+                DELETE FROM server_members
+                WHERE server_id = $1
+                AND user_id = $2
+                `,
+		[serverId, memberId]
+	);
+
+	if (result.rowCount === 0) {
+		throw httpError(
+			404,
+			'NOT_A_MEMBER',
+			'Cet utilisateur ne fait pas partie du serveur.'
+		);
+	}
+}
+
 module.exports = {
 	getCurrentServer,
 	createServer,
@@ -437,4 +575,6 @@ module.exports = {
 	joinServer,
 	leaveServer,
 	regenerateInviteCode,
+	updateServer,
+	removeMember,
 };
