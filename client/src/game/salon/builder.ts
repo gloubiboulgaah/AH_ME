@@ -14,9 +14,12 @@ import {
 
 const FLOOR_A = 0;
 const FLOOR_B = 1;
-const WALL = 2;
-const WALL_TOP = 3;
-const BASEBOARD = 4;
+const FLOOR_JOINT = 2;
+const WALL = 3;
+const WALL_TOP = 4;
+const BASEBOARD = 5;
+const GLASS = 6;
+const FRAME = 7;
 
 // sol et murs en un seul modele voxel grossier, 2 voxels par case
 function buildShellModel(layout: SalonLayout) {
@@ -28,14 +31,24 @@ function buildShellModel(layout: SalonLayout) {
 	const model = createModel(
 		'salon-shell',
 		[sx, wallHigh + 1, sz],
-		['#3c4250', '#343a46', '#525a6b', '#626b7e', '#2b303a']
+		[
+			'#9a7550',
+			'#8b6946',
+			'#755738',
+			'#d8d2c4',
+			'#ece7dc',
+			'#6d5a45',
+			'#9fd3f0',
+			'#f4f1ea',
+		]
 	);
 
-	// damier au sol
+	// parquet : lames le long de x, joints decales d'une rangee a l'autre
 	for (let x = 0; x < sx; x += 1) {
 		for (let z = 0; z < sz; z += 1) {
-			const even = (Math.floor(x / 2) + Math.floor(z / 2)) % 2 === 0;
-			fillBox(model, [x, 0, z], [x, 0, z], even ? FLOOR_A : FLOOR_B);
+			let color = z % 2 === 0 ? FLOOR_A : FLOOR_B;
+			if ((x + z * 3) % 7 === 0) color = FLOOR_JOINT;
+			fillBox(model, [x, 0, z], [x, 0, z], color);
 		}
 	}
 
@@ -54,6 +67,25 @@ function buildShellModel(layout: SalonLayout) {
 	fillBox(model, [0, 1, sz - 1], [sx - 1, 1, sz - 1], BASEBOARD);
 	fillBox(model, [0, 1, 0], [0, 1, sz - 1], BASEBOARD);
 	fillBox(model, [sx - 1, 1, 0], [sx - 1, 1, sz - 1], BASEBOARD);
+
+	// fenetres sur le mur du fond, au-dessus de chaque bureau
+	layout.deskSlots
+		.filter((slot) => slot.rotation === 0)
+		.forEach((slot) => {
+			const center = Math.round(slot.x / MAP_VOXEL + sx / 2);
+			fillBox(
+				model,
+				[center - 2, 2, 0],
+				[center + 1, wallHigh - 1, 0],
+				FRAME
+			);
+			fillBox(
+				model,
+				[center - 1, 2, 0],
+				[center, wallHigh - 1, 0],
+				GLASS
+			);
+		});
 
 	return model;
 }
@@ -110,7 +142,12 @@ export function buildSalon(
 
 	layout.decorations.forEach((decoration) => {
 		const mesh = registry.mesh(decoration.model);
-		mesh.position.set(decoration.x, 0, decoration.z);
+		// un tapis s'enfonce dans le sol pour ne depasser que d'un poil,
+		// sinon il passe au-dessus de la surbrillance des cases
+		const y = decoration.model === 'rug' ? -0.95 : 0;
+
+		mesh.position.set(decoration.x, y, decoration.z);
+		mesh.rotation.y = decoration.rotation;
 		group.add(mesh);
 	});
 

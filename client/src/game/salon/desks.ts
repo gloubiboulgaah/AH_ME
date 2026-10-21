@@ -9,7 +9,7 @@ import {
 } from '../voxel/models/furniture';
 import { TILE } from './layout';
 
-// hauteur du plateau du bureau bouchon
+// hauteur du plateau du bureau
 const DESK_TOP_Y = 9;
 
 const NOTE_COLORS = ['#ffe066', '#ff9f9f', '#9fd8ff', '#c0f0a8'];

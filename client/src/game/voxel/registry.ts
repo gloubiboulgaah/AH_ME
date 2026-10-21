@@ -19,8 +19,8 @@ interface Entry {
 	geometry: THREE.BufferGeometry | null;
 }
 
-// quand les vrais fichiers arrivent, il suffit de les charger ici avec
-// loadInto() et les bouchons sont remplaces sans toucher au reste du code
+// les modeles sont enregistres depuis le code, loadInto() permet d'en
+// remplacer un par un fichier sans toucher au reste du code
 export class VoxelRegistry {
 	private entries = new Map<string, Entry>();
 
