@@ -253,6 +253,12 @@ router.post('/:id/leave', async (req, res, next) => {
 
 		// sinon l'emplacement reste occupe par un non-membre
 		const released = await deskService.release(user.id);
+		const io = req.app.get('io');
+
+		// les autres joueurs voient le bureau se vider sans recharger
+		if (io && released) {
+			io.emit('deskReleased', { slotIndex: released.slotIndex });
+		}
 
 		res.json({
 			ok: true,

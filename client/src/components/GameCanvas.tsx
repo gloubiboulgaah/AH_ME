@@ -7,10 +7,11 @@ import { NetworkClient } from '@/game/network';
 import { InteractionManager } from '@/game/interactions';
 import type { ChatMessage } from '@/game/types';
 import { SOCKET_URL } from '@/lib/config';
-import { api } from '@/lib/api';
+import { api, type AppServer } from '@/lib/api';
 import { loadAvatar } from '@/lib/avatar';
 import DebugOverlay from '@/components/DebugOverlay';
 import DeskOverlay from '@/components/desk/DeskOverlay';
+import GameMenu from '@/components/GameMenu';
 import ChatBox from './ChatBox';
 import ChatBubble, { type ChatBubbleData } from './ChatBubble';
 
@@ -52,12 +53,35 @@ export default function GameCanvas() {
 	const [mySlotIndex, setMySlotIndex] = useState<number | null>(null);
 	const [targetedDesk, setTargetedDesk] = useState<DeskTarget | null>(null);
 	const [openDesk, setOpenDesk] = useState<DeskTarget | null>(null);
+	const [menuOpen, setMenuOpen] = useState(false);
+	const [server, setServer] = useState<AppServer | null>(null);
+	const [userId, setUserId] = useState<number | null>(null);
 
-	// le moteur ignore le clavier tant que le panneau est ouvert
+	// le moteur ignore le clavier tant qu'un panneau est ouvert
 	useEffect(() => {
 		if (engineRef.current) {
-			engineRef.current.inputLocked = openDesk !== null;
+			engineRef.current.inputLocked = openDesk !== null || menuOpen;
 		}
+	}, [openDesk, menuOpen]);
+
+	// ecoute en capture : le bureau et le menu d'interaction ferment leur
+	// panneau sur Echap, on ne doit pas rouvrir le menu dans la foulee
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== 'Escape') return;
+
+			const tag = document.activeElement?.tagName;
+			if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+			if (openDesk || engineRef.current?.interactions?.isMenuOpen) {
+				return;
+			}
+
+			setMenuOpen((open) => !open);
+		};
+
+		window.addEventListener('keydown', handleKeyDown, true);
+
+		return () => window.removeEventListener('keydown', handleKeyDown, true);
 	}, [openDesk]);
 
 	const closeDesk = useCallback(() => {
@@ -124,13 +148,37 @@ export default function GameCanvas() {
 			}
 
 			let authenticatedUsername: string | null = null;
+			let authenticatedId: number | null = null;
 
 			try {
 				const data = await api.me();
 
 				authenticatedUsername = data.user?.username ?? null;
+				authenticatedId = data.user?.id ?? null;
 			} catch {
 				authenticatedUsername = null;
+			}
+
+			// un compte n'a de bureau que s'il est membre du salon, sinon le
+			// serveur le laisse entrer sans rien lui attribuer : on passe
+			// d'abord par la page du salon pour le rejoindre
+			let currentServer: AppServer | null = null;
+
+			if (authenticatedId !== null) {
+				try {
+					currentServer = (await api.currentServer()).server;
+				} catch {
+					currentServer = null;
+				}
+
+				const isMember = currentServer?.members.some(
+					(member) => member.id === authenticatedId
+				);
+
+				if (!cancelled && !isMember) {
+					navigateRef.current('/servers', { replace: true });
+					return;
+				}
 			}
 
 			const storedGuestUsername =
@@ -150,6 +198,8 @@ export default function GameCanvas() {
 			}
 
 			setUsername(effectiveUsername);
+			setUserId(authenticatedId);
+			setServer(currentServer);
 
 			// le moteur ne connait pas react, il remonte un descripteur plat
 			const toTarget = (desk: {
@@ -290,12 +340,21 @@ export default function GameCanvas() {
 
 			<button
 				type="button"
-				className="btn avatar-customize-game-button"
-				onClick={() => navigate('/customize')}>
-				Personnaliser mon avatar
+				className="btn game-menu-button"
+				onClick={() => setMenuOpen(true)}>
+				Menu
 			</button>
 
-			{targetedDesk && !openDesk && (
+			{menuOpen && (
+				<GameMenu
+					server={server}
+					userId={userId}
+					mySlotIndex={mySlotIndex}
+					onClose={() => setMenuOpen(false)}
+				/>
+			)}
+
+			{targetedDesk && !openDesk && !menuOpen && (
 				<div className="desk-prompt">
 					Appuyez sur <strong>E</strong> pour ouvrir le bureau
 					{targetedDesk.username

@@ -86,7 +86,7 @@ export default function HomePage() {
 				<button
 					className="btn"
 					type="button"
-					onClick={() => navigate('/play')}>
+					onClick={() => navigate('/servers')}>
 					Jouer
 				</button>
 

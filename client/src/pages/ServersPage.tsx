@@ -66,7 +66,10 @@ export default function ServersPage() {
 
 		try {
 			await api.leaveServer(server.id);
-			navigate('/play');
+
+			// on reste ici, le bouton Rejoindre reapparait
+			const { server: refreshed } = await api.currentServer();
+			setServer(refreshed);
 		} catch (err) {
 			setError(
 				err instanceof Error

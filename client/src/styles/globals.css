@@ -1431,7 +1431,7 @@ body {
 	}
 }
 
-.avatar-customize-game-button {
+.game-menu-button {
 	position: fixed;
 	top: 20px;
 	left: 50%;
@@ -1440,8 +1440,38 @@ body {
 	padding: 10px 16px;
 }
 
+/* menu pause du salon, au-dessus du chat et de l'overlay de debug */
+.overlay:has(.game-menu) {
+	z-index: 3500;
+}
+
+.game-menu .panel-header {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+
+.game-menu .panel-text {
+	margin: 0;
+}
+
+.game-menu-warning {
+	margin: 0;
+	padding: var(--space-3);
+	border: 1px solid var(--color-danger);
+	border-radius: var(--radius-md);
+	background: var(--color-danger-focus-soft);
+	font-size: var(--font-size-sm);
+}
+
+.game-menu-hint {
+	margin: var(--space-4) 0 0;
+	font-size: var(--font-size-sm);
+	text-align: center;
+}
+
 @media (max-width: 600px) {
-	.avatar-customize-game-button {
+	.game-menu-button {
 		top: 70px;
 		left: auto;
 		right: var(--space-3);
