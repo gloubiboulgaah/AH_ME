@@ -49,13 +49,32 @@ function attach(io, socket) {
 	});
 
 	// rafraichit l'apparence 3D apres un depot ou un post-it
+
 	socket.on('deskContent', async (data) => {
-		if (!data || typeof data.deskId !== 'number') return;
+		if (!user || !data || typeof data !== 'object') return;
+
+		const { deskId, slotIndex } = data;
+
+		if (!Number.isSafeInteger(deskId) || !Number.isSafeInteger(slotIndex)) {
+			return;
+		}
 
 		try {
+			const desks = await service.list();
+
+			const desk = desks.find(
+				(item) => item.deskId === deskId && item.slotIndex === slotIndex
+			);
+
+			if (!desk) return;
+
+			// Seul le propriétaire du bureau peut demander
+			// une actualisation de son contenu.
+			if (desk.userId !== user.id) return;
+
 			io.emit('deskContent', {
-				slotIndex: data.slotIndex,
-				content: await service.contentFor(data.deskId),
+				slotIndex: desk.slotIndex,
+				content: await service.contentFor(desk.deskId),
 			});
 		} catch (err) {
 			console.error('desk content:', err.message);

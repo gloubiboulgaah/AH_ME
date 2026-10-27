@@ -396,3 +396,63 @@
 		width: 100%;
 	}
 }
+
+.desk-note-color-picker {
+	display: inline-flex;
+	align-items: center;
+	gap: 12px;
+	font-size: 14px;
+	font-weight: 500;
+	color: #374151;
+	cursor: pointer;
+}
+
+.desk-note-color-swatch {
+	position: relative;
+	display: inline-flex;
+	width: 38px;
+	height: 38px;
+	padding: 4px;
+	border: 1px solid #d1d5db;
+	border-radius: 12px;
+	background: #fff;
+	transition:
+		border-color 0.2s ease,
+		box-shadow 0.2s ease,
+		transform 0.2s ease;
+}
+
+.desk-note-color-swatch:hover {
+	border-color: #8b5cf6;
+	box-shadow: 0 0 0 3px rgb(139 92 246 / 12%);
+	transform: translateY(-1px);
+}
+
+.desk-note-color-swatch:focus-within {
+	outline: 2px solid #8b5cf6;
+	outline-offset: 3px;
+}
+
+.desk-note-color-swatch input[type='color'] {
+	width: 100%;
+	height: 100%;
+	padding: 0;
+	border: none;
+	border-radius: 8px;
+	background: transparent;
+	cursor: pointer;
+}
+
+.desk-note-color-swatch input[type='color']::-webkit-color-swatch-wrapper {
+	padding: 0;
+}
+
+.desk-note-color-swatch input[type='color']::-webkit-color-swatch {
+	border: none;
+	border-radius: 8px;
+}
+
+.desk-note-color-swatch input[type='color']::-moz-color-swatch {
+	border: none;
+	border-radius: 8px;
+}

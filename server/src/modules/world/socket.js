@@ -68,7 +68,14 @@ function attach(io, socket) {
 
 	socket.on('playerMove', (data) => {
 		const player = players.get(socket.id);
-		if (!player || typeof data !== 'object') return;
+		if (
+			!player ||
+			!data ||
+			typeof data !== 'object' ||
+			Array.isArray(data)
+		) {
+			return;
+		}
 
 		player.x = Number(data.x) || 0;
 		player.y = Number(data.y) || 0;

@@ -410,12 +410,18 @@ export default function DeskOverlay({ deskId, onClose }: DeskOverlayProps) {
 
 						<div className="desk-note-form-footer">
 							<label className="desk-note-color-picker">
-								Couleur
-								<input
-									type="color"
-									value={color}
-									onChange={(e) => setColor(e.target.value)}
-								/>
+								<span>Couleur du post-it</span>
+
+								<span className="desk-note-color-swatch">
+									<input
+										type="color"
+										value={color}
+										onChange={(e) =>
+											setColor(e.target.value)
+										}
+										aria-label="Choisir la couleur du post-it"
+									/>
+								</span>
 							</label>
 
 							<button
