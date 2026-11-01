@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 const authService = require('../src/modules/auth/service');
 const serverService = require('../src/modules/server/service');
 const deskService = require('../src/modules/desk/service');
+const { players } = require('../src/modules/world/socket');
 
 const authRoutes = require('../src/modules/auth/routes');
 const serverRoutes = require('../src/modules/server/routes');
@@ -203,15 +204,31 @@ test('déconnecte l’utilisateur et efface le cookie', async () => {
 	});
 });
 
-test('refuse la consultation du serveur sans connexion', async () => {
-	await withMocks(async (stub) => {
-		stub(authService, 'getSessionUser', async () => null);
+test('autorise la consultation du salon public sans connexion', async () => {
+    await withMocks(async (stub) => {
+        stub(authService, 'getSessionUser', async () => null);
+        stub(serverService, 'getCurrentServer', async () => ({
+            ...currentServer,
+            visibility: 'public',
+        }));
 
-		const result = await request('GET', '/servers/current');
+        const result = await request('GET', '/servers/current');
 
-		assert.equal(result.status, 401);
-		assert.equal(result.body.code, 'AUTH_REQUIRED');
-	});
+        assert.equal(result.status, 200);
+        assert.equal(result.body.server.id, currentServer.id);
+    });
+});
+
+test('masque le salon privé aux visiteurs sans connexion', async () => {
+    await withMocks(async (stub) => {
+        stub(authService, 'getSessionUser', async () => null);
+        stub(serverService, 'getCurrentServer', async () => currentServer);
+
+        const result = await request('GET', '/servers/current');
+
+        assert.equal(result.status, 200);
+        assert.equal(result.body.server, null);
+    });
 });
 
 test('retourne le serveur actif avec ses membres', async () => {
@@ -228,6 +245,34 @@ test('retourne le serveur actif avec ses membres', async () => {
 		assert.equal(result.body.server.members.length, 1);
 		assert.equal(result.body.server.members[0].username, 'Alice');
 	});
+});
+
+test('compte zéro joueur quand le salon est vide', async () => {
+	await withMocks(async (stub) => {
+		stub(authService, 'getSessionUser', async () => alice);
+		stub(serverService, 'getCurrentServer', async () => currentServer);
+		const result = await request('GET', '/servers/current');
+		assert.equal(result.status, 200);
+		assert.equal(result.body.server.onlineCount, 0);
+	});
+});
+
+test('compte les avatars actifs, y compris les invités, sans compter les autres salons', async () => {
+	const addedIds = ['test-online-member', 'test-online-guest', 'test-online-other'];
+	players.set(addedIds[0], { room: 'server:3', userId: 10 });
+	players.set(addedIds[1], { room: 'server:3', guest: true });
+	players.set(addedIds[2], { room: 'server:99', guest: true });
+	try {
+		await withMocks(async (stub) => {
+			stub(authService, 'getSessionUser', async () => alice);
+			stub(serverService, 'getCurrentServer', async () => currentServer);
+			const result = await request('GET', '/servers/current');
+			assert.equal(result.status, 200);
+			assert.equal(result.body.server.onlineCount, 2);
+		});
+	} finally {
+		for (const id of addedIds) players.delete(id);
+	}
 });
 
 test('crée un serveur avec l’utilisateur connecté comme propriétaire', async () => {

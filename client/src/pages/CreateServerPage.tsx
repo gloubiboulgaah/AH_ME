@@ -35,8 +35,8 @@ export default function CreateServerPage() {
 			return;
 		}
 
-		if (capacity < 2 || capacity > 50) {
-			setError('La capacité doit être comprise entre 2 et 50.');
+		if (capacity < 2 || capacity > 10) {
+			setError('La capacité doit être comprise entre 2 et 10.');
 			return;
 		}
 
@@ -186,7 +186,7 @@ export default function CreateServerPage() {
 						<label
 							className="input-label"
 							htmlFor="server-capacity">
-							Capacité
+							Capacité membres
 						</label>
 
 						<input
@@ -194,7 +194,7 @@ export default function CreateServerPage() {
 							id="server-capacity"
 							type="number"
 							min={2}
-							max={50}
+							max={10}
 							value={capacity}
 							onChange={(event) =>
 								setCapacity(Number(event.target.value))
@@ -203,7 +203,7 @@ export default function CreateServerPage() {
 						/>
 
 						<p className="server-field-help">
-							Entre 2 et 50 membres.
+							Entre 2 et 10 membres.
 						</p>
 					</div>
 

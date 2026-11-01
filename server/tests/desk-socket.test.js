@@ -20,7 +20,8 @@ async function setup(user = { id: 10 }) {
 		emit(event, payload) {
 			emitted.push({ event, payload });
 		},
-		broadcast: {
+		to(room) { return {emit(event,payload){broadcast.push({event,payload});}}; },
+        broadcast: {
 			emit(event, payload) {
 				broadcast.push({ event, payload });
 			},
@@ -28,6 +29,7 @@ async function setup(user = { id: 10 }) {
 	};
 
 	const io = {
+        to(room){return {emit(event,payload){global.push({event,payload});}};},
 		emit(event, payload) {
 			global.push({ event, payload });
 		},
@@ -123,7 +125,7 @@ test('signale quand tous les bureaux sont occupés', async () => {
 			const s = await setup();
 
 			assert.ok(s.emitted.some((item) => item.event === 'deskFull'));
-			assert.equal(s.broadcast.length, 0);
+			assert.equal(s.global.length, 0);
 		},
 		{ assignment: { reason: 'full' } }
 	);
@@ -135,7 +137,7 @@ test('n’attribue aucun bureau à un invité', async () => {
 		const s = await setup(null);
 
 		assert.equal(assign.mock.calls.length, 0);
-		assert.equal(s.broadcast.length, 0);
+		assert.equal(s.global.length, 0);
 
 		const event = s.emitted.find((item) => item.event === 'deskList');
 		assert.equal(event.payload.mySlotIndex, null);

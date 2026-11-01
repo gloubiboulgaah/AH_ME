@@ -50,12 +50,12 @@ function validateCapacity(capacity) {
 	if (
 		!Number.isInteger(numericCapacity) ||
 		numericCapacity < 2 ||
-		numericCapacity > 50
+		numericCapacity > 10
 	) {
 		throw httpError(
 			400,
 			'INVALID_CAPACITY',
-			'La capacité doit être comprise entre 2 et 50.'
+			'La capacité doit être comprise entre 2 et 10.'
 		);
 	}
 

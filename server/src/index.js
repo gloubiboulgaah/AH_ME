@@ -15,6 +15,8 @@ const apiRoutes = require('./modules/api/routes');
 const world = require('./modules/world/socket');
 const chat = require('./modules/chat/socket');
 const desk = require('./modules/desk/socket');
+const {currentRoom} = require('./modules/world/access');
+const db = require('./db/pool');
 const serverRoutes = require('./modules/server/routes');
 const deskFileRoutes = require('./modules/desk-files/routes');
 const deskNoteRoutes = require('./modules/desk-notes/routes');
@@ -69,8 +71,9 @@ io.use(async (socket, next) => {
 		const cookies = cookie.parse(socket.handshake.headers.cookie || '');
 
 		const sessionUser = cookies.sid
-			? await authService.getSessionUser(cookies.sid)
-			: null;
+            ? await authService.getSessionUser(cookies.sid)
+            : null;
+        if (cookies.sid && !sessionUser) return next(new Error('Session invalide'));
 
 		const rawGuestUsername = socket.handshake.auth?.guestUsername;
 
@@ -82,7 +85,7 @@ io.use(async (socket, next) => {
 
 		socket.data.user = sessionUser;
 		socket.data.guestUsername =
-			!sessionUser && isValidGuestUsername ? guestUsername : null;
+            !sessionUser && isValidGuestUsername ? guestUsername : null;
 
 		socket.data.username =
 			sessionUser?.username ||
@@ -96,20 +99,33 @@ io.use(async (socket, next) => {
 			error instanceof Error ? error.message : error
 		);
 
-		socket.data.user = null;
-		socket.data.guestUsername = null;
-		socket.data.username = `Guest_${socket.id.slice(0, 5)}`;
-
-		next();
+		next(new Error('Authentification indisponible'));
 	}
 });
 
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
+  try {
+    if(!socket.data.user) {
+      const username=socket.data.guestUsername;
+      if(!username) {socket.emit('accessDenied','Pseudo invité invalide');socket.disconnect(true);return;}
+      const registered=await db.query('SELECT 1 FROM users WHERE lower(username)=lower($1) LIMIT 1',[username]);
+      const duplicate=[...io.sockets.sockets.values()].some(other=>other.id!==socket.id && other.data.username?.toLowerCase()===username.toLowerCase());
+      if(registered.rows.length||duplicate) {socket.emit('accessDenied','Ce pseudo est déjà utilisé');socket.disconnect(true);return;}
+    }
+    const room = await currentRoom(socket.data.user);
+    if (!room) { socket.emit('accessDenied', 'Accès au salon refusé'); socket.disconnect(true); return; }
+    socket.data.room = room;
+    await socket.join(room);
+  } catch (error) { console.error('room access:',error.message); socket.disconnect(true); return; }
+
 	console.log(
 		`[${new Date().toISOString()}] connexion: ${
 			socket.id
 		} (${socket.data.username})`
 	);
+
+	// Les onglets du meme compte restent connectes. Le module world
+	// attribue le controle de l'unique avatar a un seul onglet.
 
 	world.attach(io, socket);
 	chat.attach(io, socket);

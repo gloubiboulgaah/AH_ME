@@ -140,9 +140,9 @@ export default function ServerSettingsPage() {
 			return;
 		}
 
-		if (capacity < minCapacity || capacity > 50) {
+		if (capacity < minCapacity || capacity > 10) {
 			setSettingsError(
-				`La capacité doit être comprise entre ${minCapacity} et 50.`
+				`La capacité doit être comprise entre ${minCapacity} et 10.`
 			);
 			return;
 		}
@@ -304,7 +304,7 @@ export default function ServerSettingsPage() {
 							<label
 								className="input-label"
 								htmlFor="settings-capacity">
-								Capacité
+								Capacité membres
 							</label>
 
 							<input
@@ -312,7 +312,7 @@ export default function ServerSettingsPage() {
 								id="settings-capacity"
 								type="number"
 								min={minCapacity}
-								max={50}
+								max={10}
 								value={capacity}
 								onChange={(event) => {
 									setCapacity(Number(event.target.value));
@@ -322,7 +322,7 @@ export default function ServerSettingsPage() {
 							/>
 
 							<p className="server-field-help">
-								Entre {minCapacity} et 50 : impossible de
+								Entre {minCapacity} et 10 : impossible de
 								descendre sous le nombre de membres actuels.
 							</p>
 						</div>

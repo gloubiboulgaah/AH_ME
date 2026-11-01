@@ -14,6 +14,7 @@ export default function ServersPage() {
 	const [server, setServer] = useState<AppServer | null>(null);
 	const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 	const [inviteCode, setInviteCode] = useState('');
+	const [isGuest, setIsGuest] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [actionLoading, setActionLoading] = useState(false);
 	const [error, setError] = useState('');
@@ -23,6 +24,7 @@ export default function ServersPage() {
 			.then(([serverResult, userResult]) => {
 				setServer(serverResult.server);
 				setCurrentUserId(userResult.user?.id ?? null);
+				setIsGuest(!userResult.user);
 			})
 			.catch((err) => {
 				setError(
@@ -34,6 +36,23 @@ export default function ServersPage() {
 			.finally(() => setLoading(false));
 	}, []);
 
+	// Actualise uniquement la presence, sans recharger la page ni effacer les saisies.
+	useEffect(() => {
+		const interval = window.setInterval(() => {
+			if (document.visibilityState !== 'visible') return;
+			api.currentServer()
+				.then(({ server: updated }) => {
+					setServer((previous) =>
+						previous && updated && previous.id === updated.id
+							? { ...previous, onlineCount: updated.onlineCount }
+							: previous
+					);
+				})
+				.catch(() => {});
+		}, 10000);
+		return () => window.clearInterval(interval);
+	}, []);
+
 	async function handleJoin() {
 		if (!server) return;
 
@@ -41,6 +60,16 @@ export default function ServersPage() {
 		setActionLoading(true);
 
 		try {
+			if (isGuest) {
+				if (server.visibility === 'private') {
+					setError(
+						'Ce salon privé nécessite un compte et une invitation.'
+					);
+					return;
+				}
+				navigate('/play');
+				return;
+			}
 			await api.joinServer(
 				server.id,
 				server.visibility === 'private' ? inviteCode.trim() : undefined
@@ -106,16 +135,22 @@ export default function ServersPage() {
 				<section className="panel server-panel server-empty">
 					<p className="join-eyebrow">Salon AH_ME</p>
 
-					<h1>Aucun serveur</h1>
+					<h1>Aucun salon disponible</h1>
 
-					<p>
-						Aucun serveur n'a encore été créé. Créez le premier
-						espace de votre équipe.
-					</p>
+					<p>Aucun salon public n'est disponible pour le moment.</p>
 
-					<Link className="btn" to="/servers/create">
-						Créer un serveur
-					</Link>
+					{isGuest ? (
+						<button
+							className="btn"
+							type="button"
+							onClick={() => navigate('/play')}>
+							Retourner au Lobby
+						</button>
+					) : (
+						<Link className="btn" to="/servers/create">
+							Créer un serveur
+						</Link>
+					)}
 				</section>
 			</main>
 		);
@@ -157,8 +192,12 @@ export default function ServersPage() {
 					</div>
 
 					<div>
+						<strong>{server.onlineCount ?? '—'}</strong>
+						<span>Joueurs en ligne</span>
+					</div>
+					<div>
 						<strong>{server.capacity}</strong>
-						<span>Capacité</span>
+						<span>Capacité membres</span>
 					</div>
 				</div>
 

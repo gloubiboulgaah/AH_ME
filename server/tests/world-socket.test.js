@@ -7,6 +7,7 @@ const service = require('../src/modules/world/service');
 const { attach, players } = require('../src/modules/world/socket');
 
 let nextId = 1;
+const activeSockets = [];
 
 async function setup({ user = { id: 10 }, avatar = undefined } = {}) {
 	const id = `socket-${nextId++}`;
@@ -19,6 +20,7 @@ async function setup({ user = { id: 10 }, avatar = undefined } = {}) {
 		data: {
 			user,
 			username: 'Alice',
+			room: 'lobby',
 		},
 		handshake: {
 			auth: { avatar },
@@ -29,6 +31,13 @@ async function setup({ user = { id: 10 }, avatar = undefined } = {}) {
 		emit(event, payload) {
 			emitted.push({ event, payload });
 		},
+		to(room) {
+			return {
+				emit(event, payload) {
+					broadcast.push({ event, payload, room });
+				},
+			};
+		},
 		broadcast: {
 			emit(event, payload) {
 				broadcast.push({ event, payload });
@@ -36,7 +45,18 @@ async function setup({ user = { id: 10 }, avatar = undefined } = {}) {
 		},
 	};
 
-	attach({}, socket);
+	const io = {
+		sockets: { sockets: new Map([[id, socket]]) },
+		to(room) {
+			return {
+				emit(event, payload) {
+					broadcast.push({ event, payload, room });
+				},
+			};
+		},
+	};
+	attach(io, socket);
+	activeSockets.push({ socket, handlers });
 
 	for (let i = 0; i < 20; i++) {
 		if (emitted.some((item) => item.event === 'init')) break;
@@ -70,6 +90,10 @@ async function withMocks(callback, saved = null) {
 }
 
 afterEach(() => {
+	// ferme les sockets pour ne pas gêner les autres tests
+	for (const { handlers } of activeSockets.splice(0)) {
+		handlers.get('disconnect')?.();
+	}
 	players.clear();
 });
 
@@ -154,10 +178,11 @@ test('envoie les événements init et currentPlayers', async () => {
 
 		assert.deepEqual(
 			s.emitted.map((event) => event.event),
-			['init', 'currentPlayers']
+			['avatarControl', 'init', 'currentPlayers']
 		);
-		assert.equal(s.emitted[0].payload.playerId, s.id);
-		assert.equal(s.emitted[1].payload.length, 1);
+		assert.equal(s.emitted[0].payload.active, true);
+		assert.equal(s.emitted[1].payload.playerId, s.id);
+		assert.equal(s.emitted[2].payload.length, 1);
 	});
 });
 
@@ -204,6 +229,7 @@ test('met à jour la position lors d’un déplacement', async () => {
 
 		assert.deepEqual(s.broadcast.at(-1), {
 			event: 'playerMoved',
+			room: 'lobby',
 			payload: {
 				id: s.id,
 				x: 8,
@@ -214,7 +240,7 @@ test('met à jour la position lors d’un déplacement', async () => {
 	});
 });
 
-test('remplace les coordonnées invalides par zéro', async () => {
+test('ignore les coordonnées invalides', async () => {
 	await withMocks(async () => {
 		const s = await setup();
 
@@ -225,7 +251,7 @@ test('remplace les coordonnées invalides par zéro', async () => {
 		});
 
 		assert.equal(players.get(s.id).x, 0);
-		assert.equal(players.get(s.id).y, 0);
+		assert.equal(players.get(s.id).y, 5);
 		assert.equal(players.get(s.id).z, 0);
 	});
 });
@@ -254,6 +280,7 @@ test('retire le joueur lors de la déconnexion', async () => {
 		assert.deepEqual(s.broadcast.at(-1), {
 			event: 'playerLeft',
 			payload: s.id,
+			room: 'lobby',
 		});
 	});
 });

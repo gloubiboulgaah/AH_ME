@@ -1,12 +1,13 @@
 /** @format */
 
 import { useState, type ChangeEvent, type SubmitEventHandler } from 'react';
+import { api } from '../lib/api';
 
 const MIN_USERNAME_LENGTH = 3;
 const MAX_USERNAME_LENGTH = 20;
 
 type JoinScreenProps = {
-	onJoin: (username: string) => void;
+	onJoin: (username: string) => Promise<void>;
 };
 
 export default function JoinScreen({ onJoin }: JoinScreenProps) {
@@ -32,7 +33,7 @@ export default function JoinScreen({ onJoin }: JoinScreenProps) {
 		return '';
 	};
 
-	const handleSubmit: SubmitEventHandler<HTMLFormElement> = (event) => {
+	const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (event) => {
 		event.preventDefault();
 
 		const trimmedUsername = username.trim();
@@ -46,7 +47,13 @@ export default function JoinScreen({ onJoin }: JoinScreenProps) {
 		setError('');
 		setIsSubmitting(true);
 
-		onJoin(trimmedUsername);
+		try {
+            const { available } = await api.guestUsernameAvailable(trimmedUsername);
+            if (!available) { setError('Ce pseudo est déjà utilisé.'); return; }
+            await onJoin(trimmedUsername);
+        } catch (error) {
+            setError(error instanceof Error ? error.message : 'Impossible de vérifier le pseudo.');
+        } finally { setIsSubmitting(false); }
 	};
 
 	const handleUsernameChange = (event: ChangeEvent<HTMLInputElement>) => {

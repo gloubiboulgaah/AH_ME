@@ -34,7 +34,7 @@ export default function HomePage() {
 		setUser(null);
 	};
 
-	const handleGuestJoin = (username: string) => {
+	const handleGuestJoin = async (username: string) => {
 		const normalizedUsername = username.trim();
 
 		localStorage.setItem('ahme_guest_username', normalizedUsername);

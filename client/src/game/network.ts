@@ -34,6 +34,9 @@ export class NetworkClient {
 	engine: GameEngine;
 	socket: Socket | null = null;
 	playerId: string | null = null;
+	private controlsAvatar = true;
+    private myUsername = '';
+    networkUsername() {return this.myUsername;}
 	mySlotIndex: number | null = null;
 	otherPlayers = new Map<string, PlayerMesh>();
 	serverUrl: string;
@@ -96,8 +99,13 @@ export class NetworkClient {
 		});
 		socket.on('connect_error', () => this.onStatus(false));
 
+		socket.on('avatarControl', (data: { active: boolean }) => {
+			this.controlsAvatar = data.active;
+		});
+
 		socket.on('init', (data: { playerId: string; player: PlayerData }) => {
 			this.playerId = data.playerId;
+            this.myUsername = data.player.username;
 
 			this.engine.player.geometry = this.engine.avatarGeometryFor(
 				data.player
@@ -123,6 +131,7 @@ export class NetworkClient {
 				}
 			});
 			this.emitPlayerCount();
+            socket.emit('privateMessageHistory');
 		});
 
 		socket.on('playerJoined', (player: PlayerData) => {
@@ -135,6 +144,9 @@ export class NetworkClient {
 			(data: { id: string; x: number; y: number; z: number }) => {
 				const otherPlayer = this.otherPlayers.get(data.id);
 
+				if (data.id === this.playerId && !this.controlsAvatar) {
+					this.engine.player.position.set(data.x, 0, data.z);
+				}
 				if (otherPlayer) {
 					otherPlayer.targetPos = new THREE.Vector3(
 						data.x,
@@ -154,7 +166,29 @@ export class NetworkClient {
 			this.onChat(data);
 		});
 
-		socket.on('privateMessage', (data: PrivateMessage) => {
+		socket.on('sessionReplaced', () => {
+			this.onStatus(false);
+			this.onPlayerCount(0);
+			window.alert('Votre compte est maintenant actif dans un autre onglet.');
+		});
+
+		socket.on('emote', (data: { from: string; type: string }) => {
+			if (data.type !== 'wave') return;
+			const mesh = data.from === this.playerId
+				? this.engine.player
+				: this.otherPlayers.get(data.from);
+			if (mesh) this.showWave(mesh);
+		});
+
+		socket.on('privateMessageHistory', (entries: Array<{id:number;sender_id:number;recipient_id:number;body:string;created_at:string;read_at:string|null;sender_username:string;recipient_username:string}>) => {
+            this.engine.interactions?.receivePrivateHistory(entries);
+        });
+
+        socket.on('privateMessageSent', (data: {to:string;message:string}) => {
+            this.engine.interactions?.confirmPrivateMessage(data);
+        });
+
+        socket.on('privateMessage', (data: PrivateMessage) => {
 			this.onPrivateMessage(data);
 
 			if (this.engine.interactions) {
@@ -298,8 +332,40 @@ export class NetworkClient {
 		mesh.userData.label = sprite;
 	}
 
+	private showWave(mesh: THREE.Object3D) {
+		const canvas = document.createElement('canvas');
+		canvas.width = 128;
+		canvas.height = 64;
+		const context = canvas.getContext('2d');
+		if (!context) return;
+		context.font = 'bold 32px Arial';
+		context.textAlign = 'center';
+		context.fillStyle = '#ffffff';
+		context.fillText('Salut !', 64, 43);
+		const texture = new THREE.CanvasTexture(canvas);
+		const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+		const bubble = new THREE.Sprite(material);
+		bubble.scale.set(15, 7.5, 1);
+		bubble.position.y = 29;
+		mesh.add(bubble);
+		const initialRotation = mesh.rotation.z;
+		let frame = 0;
+		const animate = () => {
+			if (frame++ < 45 && mesh.parent) {
+				mesh.rotation.z = initialRotation + Math.sin(frame * 0.55) * 0.08;
+				requestAnimationFrame(animate);
+			} else {
+				mesh.rotation.z = initialRotation;
+				mesh.remove(bubble);
+				material.dispose();
+				texture.dispose();
+			}
+		};
+		animate();
+	}
+
 	sendPlayerPosition(x: number, y: number, z: number) {
-		if (!this.socket?.connected) return;
+		if (!this.socket?.connected || !this.controlsAvatar) return;
 
 		this.socket.emit('playerMove', {
 			x,

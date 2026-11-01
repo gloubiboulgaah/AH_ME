@@ -21,6 +21,7 @@ export interface AppServer {
 	ownerId: number;
 	capacity: number;
 	visibility: 'public' | 'private';
+	onlineCount?: number;
 	createdAt: string;
 	members: ServerMember[];
 }
@@ -56,7 +57,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 		...options,
 	});
 	const data = await res.json().catch(() => ({}));
-	if (!res.ok) throw new Error(data.error || 'erreur reseau');
+	if (!res.ok) throw new Error(data.error || data.message || (res.status === 401 ? 'Connexion requise.' : res.status === 403 ? 'Accès refusé.' : 'Erreur réseau'));
 	return data;
 }
 
@@ -99,6 +100,7 @@ export const api = {
 		}),
 	logout: () => request<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
 	me: () => request<{ user: User | null }>('/auth/me'),
+    guestUsernameAvailable: (username: string) => request<{ available: boolean }>(`/guest-username/available?username=${encodeURIComponent(username)}`),
 	currentServer: () =>
 		request<{ server: AppServer | null }>('/servers/current'),
 

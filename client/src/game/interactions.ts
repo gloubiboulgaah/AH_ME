@@ -1,6 +1,7 @@
 /** @format */
 
 import type { GameEngine } from './engine';
+import { TILE } from './salon/layout';
 import type { PlayerMesh, PrivateMessage } from './types';
 
 interface NearbyPlayer {
@@ -10,18 +11,22 @@ interface NearbyPlayer {
 	distance: number;
 }
 
-// Menu d’interactions entre joueurs (touche E).
+// Menu d’interactions entre joueurs (touche F).
 // Conservé depuis la version vanilla.
 // TODO : le convertir plus tard en composant React.
 export class InteractionManager {
 	engine: GameEngine;
-	interactionRadius = 50;
+	interactionRadius = TILE * 2;
 	nearbyPlayers: NearbyPlayer[] = [];
 	interactionMenu!: HTMLDivElement;
 	interactionIndicator!: HTMLDivElement;
 	isMenuOpen = false;
 
 	private cleanups: Array<() => void> = [];
+	private conversations = new Map<string, Array<{ sender: string; message: string; sent: boolean }>>();
+	private unread = new Map<string, number>();
+    private userIdForSocket = new Map<string, number>();
+	private inbox!: HTMLButtonElement;
 
 	constructor(engine: GameEngine) {
 		this.engine = engine;
@@ -62,15 +67,25 @@ export class InteractionManager {
 		indicator.id = 'interaction-indicator';
 		indicator.className = 'interaction-indicator hidden';
 		indicator.innerHTML =
-			'<span class="indicator-text">Appuyez sur E pour interagir</span>';
+			'<span class="indicator-text">Appuyez sur F pour interagir</span>';
 
 		document.body.appendChild(indicator);
 		this.interactionIndicator = indicator;
 
+		this.inbox = document.createElement('button');
+		this.inbox.type = 'button';
+		this.inbox.className = 'btn';
+		this.inbox.textContent = 'Messages';
+		this.inbox.classList.add('private-inbox-button');
+		this.inbox.addEventListener('click', () => this.openInbox());
+		document.body.appendChild(this.inbox);
+
 		this.cleanups.push(() => {
 			menu.remove();
 			indicator.remove();
+			this.inbox.remove();
 			document.getElementById('message-dialog')?.remove();
+            document.getElementById('private-inbox-panel')?.remove();
 		});
 	}
 
@@ -85,7 +100,7 @@ export class InteractionManager {
 
 			if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
-			if (event.key.toLowerCase() === 'e' && !this.isMenuOpen) {
+			if (event.key.toLowerCase() === 'f' && !event.repeat && !this.isMenuOpen) {
 				if (this.nearbyPlayers.length > 0) this.openMenu();
 			} else if (event.key === 'Escape' && this.isMenuOpen) {
 				this.closeMenu();
@@ -136,14 +151,14 @@ export class InteractionManager {
 	}
 
 	private updateIndicator() {
-		if (this.nearbyPlayers.length > 0 && !this.isMenuOpen) {
+		if (this.nearbyPlayers.length > 0 && !this.isMenuOpen ) {
 			this.interactionIndicator.classList.remove('hidden');
 
 			const count = this.nearbyPlayers.length;
 			const text =
 				count === 1
-					? `Appuyez sur E pour interagir avec ${this.nearbyPlayers[0].username}`
-					: `Appuyez sur E pour interagir (${count} joueurs à proximité)`;
+					? `Appuyez sur F pour interagir avec ${this.nearbyPlayers[0].username}`
+					: `Appuyez sur F pour interagir (${count} joueurs à proximité)`;
 
 			const label =
 				this.interactionIndicator.querySelector('.indicator-text');
@@ -179,7 +194,7 @@ export class InteractionManager {
 
 				section.innerHTML = `
 					<div class="player-header">
-						<strong>${player.username}</strong>
+						<strong>${this.escapeHtml(player.username)}</strong>
 						<span class="distance">
 							${Math.round(player.distance)} unités
 						</span>
@@ -264,7 +279,7 @@ export class InteractionManager {
 		dialog.innerHTML = `
 			<div class="message-dialog-header">
 				<h3 id="message-dialog-title">
-					Message à ${player.username}
+					Message à ${this.escapeHtml(player.username)}
 				</h3>
 
 				<button
@@ -288,7 +303,7 @@ export class InteractionManager {
 						class="sr-only"
 						for="private-message-input-${player.id}"
 					>
-						Message pour ${player.username}
+						Message pour ${this.escapeHtml(player.username)}
 					</label>
 
 					<input
@@ -311,7 +326,15 @@ export class InteractionManager {
 			</div>
 		`;
 
+		dialog.dataset.playerId = player.id;
 		document.body.appendChild(dialog);
+		this.unread.delete(player.id);
+        const peerId=this.userIdForSocket.get(player.id);
+        if(peerId) this.engine.network?.socket?.emit('privateMessageRead',{userId:peerId});
+		this.updateInbox();
+		for (const entry of this.conversations.get(player.id) ?? []) {
+			this.renderMessage(player.id, entry.sender, entry.message, entry.sent);
+		}
 
 		dialog
 			.querySelector<HTMLButtonElement>('.close-btn')
@@ -329,6 +352,7 @@ export class InteractionManager {
 			if (!message || !this.engine.network?.socket) return;
 
 			this.engine.network.socket.emit('privateMessage', {
+                toUserId: player.id.startsWith('offline:') ? Number(player.id.split(':')[1]) : this.userIdForSocket.get(player.id),
 				to: player.id,
 				message,
 			});
@@ -357,6 +381,13 @@ export class InteractionManager {
 		message: string,
 		isSent: boolean
 	) {
+		const entries = this.conversations.get(playerId) ?? [];
+		entries.push({ sender, message, sent: isSent });
+		this.conversations.set(playerId, entries.slice(-100));
+		this.renderMessage(playerId, sender, message, isSent);
+	}
+
+	private renderMessage(playerId: string, sender: string, message: string, isSent: boolean) {
 		const history = document.getElementById(`message-history-${playerId}`);
 
 		if (!history) return;
@@ -395,37 +426,109 @@ export class InteractionManager {
 
 	receivePrivateMessage(data: PrivateMessage) {
 		const mesh = this.engine.network?.otherPlayers.get(data.from);
+		const username = data.fromUsername || mesh?.userData.username || '?';
 
-		if (!mesh) return;
+		if(data.fromUserId) this.userIdForSocket.set(data.from,data.fromUserId);
+        this.addMessageToHistory(data.from, username, data.message, false);
 
-		const username = mesh.userData.username || '?';
-
-		this.addMessageToHistory(data.from, username, data.message, false);
-
-		if (!document.getElementById('message-dialog')) {
-			this.showNotification(`${username} vous a envoyé un message`);
+		const dialog = document.getElementById('message-dialog');
+		if (dialog?.dataset.playerId !== data.from) {
+			this.unread.set(data.from, (this.unread.get(data.from) ?? 0) + 1);
+			this.updateInbox();
+			this.showNotification(`${username} vous a envoyé un message`, data.from);
 		}
 	}
 
-	private showNotification(text: string) {
-		const notification = document.createElement('div');
 
-		notification.className = 'notification';
-		notification.textContent = text;
+    receivePrivateHistory(entries: Array<{id:number;sender_id:number;recipient_id:number;body:string;created_at:string;read_at:string|null;sender_username:string;recipient_username:string}>) {
+        // garde les nouveaux messages reçus pendant le chargement
+        const current = this.engine.network?.otherPlayers;
+        for (const entry of entries) {
+            const isMine = Boolean(this.engine.network && entry.sender_username === this.engine.network?.networkUsername());
+            const peerId = isMine ? entry.recipient_id : entry.sender_id;
+            const peerName = isMine ? entry.recipient_username : entry.sender_username;
+            const online = [...(current?.entries() ?? [])].find(([,mesh]) => mesh.userData.username === peerName)?.[0];
+            const key = online ?? `offline:${peerId}`;
+            if (online) this.userIdForSocket.set(online,peerId);
+            const history = this.conversations.get(key) ?? [];
+            if (!history.some(row => row.message === entry.body && row.sender === (isMine?'Vous':peerName))) {
+                history.push({sender:isMine?'Vous':peerName,message:entry.body,sent:isMine});
+                this.conversations.set(key,history.slice(-200));
+            }
+            if (!isMine && !entry.read_at) this.unread.set(key,(this.unread.get(key) ?? 0)+1);
+        }
+        this.updateInbox();
+    }
 
+    confirmPrivateMessage(_data: {to:string;message:string}) { /* Message déjà affiché à l'envoi. */ }
+
+	private escapeHtml(value: string) {
+		return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
+	}
+
+	private updateInbox() {
+		const count = [...this.unread.values()].reduce((sum, value) => sum + value, 0);
+		this.inbox.textContent = count ? `Messages (${count})` : 'Messages';
+	}
+
+	private openInbox(playerId?: string) {
+        const ids = [...this.conversations.keys()];
+        if (playerId) {
+            const mesh = this.engine.network?.otherPlayers.get(playerId);
+            const entries = this.conversations.get(playerId) ?? [];
+            const name = mesh?.userData.username || entries.find((entry) => !entry.sent)?.sender || 'Joueur';
+            this.openMessageDialog({ id: playerId, mesh: mesh as PlayerMesh, username: name, distance: 0 });
+            return;
+        }
+        document.getElementById('private-inbox-panel')?.remove();
+        const panel = document.createElement('section');
+        panel.id = 'private-inbox-panel';
+        panel.className = 'panel private-inbox-panel';
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-label', 'Conversations privées');
+        const header = document.createElement('div');
+        header.className = 'private-inbox-header';
+        const title = document.createElement('h3');
+        title.textContent = 'Messages privés';
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'btn';
+        close.textContent = 'Fermer';
+        close.addEventListener('click', () => panel.remove());
+        header.append(title, close);
+        panel.appendChild(header);
+        if (!ids.length) {
+            const empty = document.createElement('p');
+            empty.textContent = 'Aucune conversation pour le moment.';
+            panel.appendChild(empty);
+        }
+        for (const id of ids) {
+            const entries = this.conversations.get(id) ?? [];
+            const mesh = this.engine.network?.otherPlayers.get(id);
+            const name = mesh?.userData.username || entries.find((entry) => !entry.sent)?.sender || 'Joueur';
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn private-inbox-conversation';
+            button.textContent = `${name}${this.unread.get(id) ? ` (${this.unread.get(id)} non lus)` : ''}`;
+            button.addEventListener('click', () => { panel.remove(); this.openInbox(id); });
+            panel.appendChild(button);
+        }
+        document.body.appendChild(panel);
+    }
+
+	private showNotification(text: string, playerId: string) {
+		const notification = document.createElement('button');
+		notification.type = 'button';
+		notification.className = 'notification show';
+		notification.style.pointerEvents = 'auto';
+		notification.textContent = `${text} — Ouvrir`;
+		notification.addEventListener('click', () => {
+			this.openInbox(playerId);
+			notification.remove();
+		});
 		document.body.appendChild(notification);
-
-		setTimeout(() => {
-			notification.classList.add('show');
-		}, 100);
-
-		setTimeout(() => {
-			notification.classList.remove('show');
-
-			setTimeout(() => {
-				notification.remove();
-			}, 300);
-		}, 3000);
+		// Le message reste accessible via le bouton Messages.
+		setTimeout(() => notification.remove(), 12000);
 	}
 
 	destroy() {

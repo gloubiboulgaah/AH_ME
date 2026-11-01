@@ -5,6 +5,7 @@ const { Router } = require('express');
 const authService = require('../auth/service');
 const serverService = require('./service');
 const deskService = require('../desk/service');
+const { players } = require('../world/socket');
 
 const router = Router();
 
@@ -29,16 +30,13 @@ async function requireUser(req, res) {
 
 router.get('/current', async (req, res, next) => {
 	try {
-		const user = await requireUser(req, res);
-
-		if (!user) return;
-
+		// les invites peuvent voir le salon public mais pas le modifier
+		const user = await getAuthenticatedUser(req);
 		const server = await serverService.getCurrentServer();
 
-		if (!server) {
-			return res.json({
-				server: null,
-			});
+		// cache le salon prive aux visiteurs non connectes
+		if (!server || (!user && server.visibility !== 'public')) {
+			return res.json({ server: null });
 		}
 
 		res.json({
@@ -48,6 +46,10 @@ router.get('/current', async (req, res, next) => {
 				ownerId: server.owner_id,
 				capacity: server.capacity,
 				visibility: server.visibility,
+				// Avatars actifs dans ce salon, invites compris (pas les onglets spectateurs).
+				onlineCount: [...players.values()].filter(
+					(player) => player.room === `server:${server.id}`
+				).length,
 				// meme forme que ServerMember cote client
 				members: server.members.map((member) => ({
 					id: member.id,

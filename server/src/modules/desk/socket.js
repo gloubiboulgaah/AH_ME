@@ -12,7 +12,7 @@ function attach(io, socket) {
 			if (assigned.deskId) {
 				socket.data.deskSlot = assigned.slotIndex;
 
-				socket.broadcast.emit('deskAssigned', {
+				socket.to(socket.data.room).emit('deskAssigned', {
 					deskId: assigned.deskId,
 					slotIndex: assigned.slotIndex,
 					userId: user.id,
@@ -41,7 +41,7 @@ function attach(io, socket) {
 
 			if (released) {
 				socket.data.deskSlot = null;
-				io.emit('deskReleased', { slotIndex: released.slotIndex });
+				io.to(socket.data.room).emit('deskReleased', { slotIndex: released.slotIndex });
 			}
 		} catch (err) {
 			console.error('desk leave:', err.message);
@@ -72,7 +72,7 @@ function attach(io, socket) {
 			// une actualisation de son contenu.
 			if (desk.userId !== user.id) return;
 
-			io.emit('deskContent', {
+			io.to(socket.data.room).emit('deskContent', {
 				slotIndex: desk.slotIndex,
 				content: await service.contentFor(desk.deskId),
 			});

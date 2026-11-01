@@ -455,6 +455,7 @@ body {
 
 /* indicateur d'interaction */
 .interaction-indicator {
+	bottom: 94px;
 	position: absolute;
 	bottom: 30px;
 	left: 50%;
@@ -1679,7 +1680,7 @@ body {
 
 .server-stats {
 	display: grid;
-	grid-template-columns: repeat(2, 1fr);
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--space-3);
 	margin-bottom: var(--space-4);
 }
@@ -1882,5 +1883,83 @@ body {
 	.server-member {
 		flex-direction: column;
 		align-items: stretch;
+	}
+}
+
+.private-inbox-button {
+	position: fixed;
+	right: 20px;
+	top: 80px;
+	z-index: 1200;
+}
+.private-inbox-panel {
+	position: fixed;
+	top: 145px;
+	right: 20px;
+	width: min(380px, calc(100vw - 32px));
+	max-height: 65vh;
+	overflow-y: auto;
+	z-index: 1300;
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.private-inbox-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+.private-inbox-header h3 {
+	margin: 0;
+}
+.private-inbox-conversation {
+	width: 100%;
+	text-align: left;
+}
+@media (max-width: 700px) {
+	.private-inbox-button {
+		top: 130px;
+		right: 12px;
+	}
+	.private-inbox-panel {
+		top: 190px;
+		right: 12px;
+		max-height: 48vh;
+	}
+	.message-dialog {
+		position: fixed;
+		left: 12px;
+		right: 12px;
+		top: auto;
+		bottom: 12px;
+		transform: none;
+		width: auto;
+		max-height: 60vh;
+	}
+}
+
+@media (max-width: 700px) {
+	.game-menu-button {
+		top: 12px;
+		right: 12px;
+		left: auto;
+		transform: none;
+	}
+	.private-inbox-button {
+		top: 62px;
+		right: 12px;
+	}
+	.private-inbox-panel {
+		top: 112px;
+		right: 12px;
+		max-height: calc(100dvh - 130px);
+	}
+}
+
+@media (max-width: 480px) {
+	.server-stats {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }

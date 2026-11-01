@@ -2,6 +2,8 @@
 
 import { createBrowserRouter } from 'react-router-dom';
 import HomePage from './pages/HomePage';
+import RequireAccount from './components/RequireAccount';
+import RequireGameEntry from './components/RequireGameEntry';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PlayPage from './pages/PlayPage';
@@ -16,9 +18,9 @@ export const router = createBrowserRouter([
 	{ path: '/register', element: <RegisterPage /> },
 	{ path: '/play', element: <PlayPage /> },
 	{ path: '/customize', element: <CustomizePage /> },
-	{ path: '/servers', element: <ServersPage /> },
-	{ path: '/servers/create', element: <CreateServerPage /> },
-	{ path: '/servers/settings', element: <ServerSettingsPage /> },
+	{ path: '/servers', element: <RequireGameEntry><ServersPage /></RequireGameEntry> },
+	{ path: '/servers/create', element: <RequireAccount><CreateServerPage /></RequireAccount> },
+	{ path: '/servers/settings', element: <RequireAccount><ServerSettingsPage /></RequireAccount> },
 	{
 		path: '*',
 		element: (

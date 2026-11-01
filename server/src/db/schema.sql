@@ -6,6 +6,9 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Un pseudo doit rester unique meme si seule la casse change.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users (lower(username));
+
 CREATE TABLE IF NOT EXISTS sessions (
     token UUID PRIMARY KEY DEFAULT gen_random_uuid (),
     user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
@@ -133,3 +136,17 @@ CREATE TABLE IF NOT EXISTS desk_notes (
 CREATE INDEX IF NOT EXISTS idx_desk_notes_desk ON desk_notes (desk_id);
 
 CREATE INDEX IF NOT EXISTS idx_desk_notes_author ON desk_notes (author_id);
+
+
+-- Historique des messages entre comptes enregistres.
+CREATE TABLE IF NOT EXISTS private_messages (
+    id BIGSERIAL PRIMARY KEY,
+    sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body VARCHAR(300) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    read_at TIMESTAMPTZ,
+    CONSTRAINT private_messages_nonempty CHECK (length(btrim(body)) > 0)
+);
+CREATE INDEX IF NOT EXISTS idx_private_messages_sender ON private_messages(sender_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_private_messages_recipient ON private_messages(recipient_id, created_at DESC);

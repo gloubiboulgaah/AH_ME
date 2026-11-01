@@ -29,9 +29,19 @@ function parseAvatar(raw) {
 
 // cache memoire de la salle, la db reste la source de verite pour les comptes
 const players = new Map();
+// Un compte = un avatar. Les autres onglets suivent cet avatar sans le dupliquer.
+const accountControllers = new Map();
+const accountTabs = new Map();
 
 function attach(io, socket) {
 	const user = socket.data.user;
+	const accountKey = user ? String(user.id) : null;
+	if (accountKey) {
+		if (!accountTabs.has(accountKey)) accountTabs.set(accountKey, new Set());
+		accountTabs.get(accountKey).add(socket.id);
+		if (!accountControllers.has(accountKey)) accountControllers.set(accountKey, socket.id);
+	}
+	const isController = () => !accountKey || accountControllers.get(accountKey) === socket.id;
 
 	const init = async () => {
 		const saved = user ? await service.loadPlayer(user.id) : null;
@@ -54,13 +64,23 @@ function attach(io, socket) {
 			skin: avatar ? avatar.skin : null,
 			build: avatar ? avatar.build : null,
 			connected: Date.now(),
+            room: socket.data.room,
 		};
+		if (socket.connected === false) return;
+		if (!isController()) {
+			const ownerId = accountControllers.get(accountKey);
+			const owner = players.get(ownerId);
+			// Un onglet secondaire ne cree jamais de deuxieme avatar.
+			socket.emit('avatarControl', { active: false });
+			socket.emit('init', { playerId: ownerId, player: owner || player });
+			socket.emit('currentPlayers', Array.from(players.values()).filter(p => p.room === socket.data.room));
+			return;
+		}
 		players.set(socket.id, player);
-
+		socket.emit('avatarControl', { active: true });
 		socket.emit('init', { playerId: socket.id, player });
-		socket.emit('currentPlayers', Array.from(players.values()));
-		socket.broadcast.emit('playerJoined', player);
-
+		socket.emit('currentPlayers', Array.from(players.values()).filter(p => p.room === socket.data.room));
+		socket.to(socket.data.room).emit('playerJoined', player);
 		if (user) await service.savePlayer(user.id, player);
 	};
 
@@ -68,6 +88,7 @@ function attach(io, socket) {
 
 	socket.on('playerMove', (data) => {
 		const player = players.get(socket.id);
+		if (!isController()) return;
 		if (
 			!player ||
 			!data ||
@@ -77,11 +98,13 @@ function attach(io, socket) {
 			return;
 		}
 
-		player.x = Number(data.x) || 0;
-		player.y = Number(data.y) || 0;
-		player.z = Number(data.z) || 0;
+		const coords = [data.x, data.y, data.z].map((value) => {
+			return typeof value === 'number' && Number.isFinite(value) ? value : NaN;
+		});
+		if (coords.some((value) => !Number.isFinite(value) || Math.abs(value) > 10000)) return;
+		[player.x, player.y, player.z] = coords;
 
-		socket.broadcast.emit('playerMoved', {
+		io.to(socket.data.room).emit('playerMoved', {
 			id: socket.id,
 			x: player.x,
 			y: player.y,
@@ -96,8 +119,30 @@ function attach(io, socket) {
 	});
 
 	socket.on('disconnect', () => {
-		players.delete(socket.id);
-		socket.broadcast.emit('playerLeft', socket.id);
+		if (accountKey) {
+			const tabs = accountTabs.get(accountKey);
+			tabs?.delete(socket.id);
+			if (!tabs?.size) accountTabs.delete(accountKey);
+			if (accountControllers.get(accountKey) === socket.id) {
+				const nextId = tabs?.values().next().value;
+				if (nextId) {
+					accountControllers.set(accountKey, nextId);
+					const nextSocket = io.sockets.sockets.get(nextId);
+					const old = players.get(socket.id);
+					if (old && nextSocket) {
+						const replacement = { ...old, id: nextId };
+						players.set(nextId, replacement);
+						players.delete(socket.id);
+						nextSocket.emit('avatarControl', { active: true });
+						nextSocket.emit('init', { playerId: nextId, player: replacement });
+						io.to(socket.data.room).emit('playerLeft', socket.id);
+						io.to(socket.data.room).emit('playerJoined', replacement);
+						return;
+					}
+				} else accountControllers.delete(accountKey);
+			}
+		}
+		if (players.delete(socket.id)) socket.to(socket.data.room).emit('playerLeft', socket.id);
 	});
 }
 

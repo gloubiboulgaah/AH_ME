@@ -6,13 +6,15 @@ const assert = require('node:assert/strict');
 const { attach } = require('../src/modules/chat/socket');
 const { players } = require('../src/modules/world/socket');
 
-function setup(player = { username: 'Alice' }) {
+function setup(player = { username: 'Alice', room: 'lobby' }) {
 	const handlers = new Map();
 	const events = [];
 	const privateEvents = [];
 
 	const socket = {
 		id: 'socket-alice',
+        data: {room:'lobby',user:null},
+        emit(event,payload){events.push({event,payload});},
 		on(event, handler) {
 			handlers.set(event, handler);
 		},
@@ -25,13 +27,14 @@ function setup(player = { username: 'Alice' }) {
 		to(target) {
 			return {
 				emit(event, payload) {
-					privateEvents.push({
+                    if(target==='lobby') events.push({event,payload});
+                    else privateEvents.push({
 						target,
 						event,
 						payload,
-					});
-				},
-			};
+                    });
+                },
+            };
 		},
 	};
 
@@ -110,6 +113,7 @@ test('limite les messages publics à 300 caractères', () => {
 
 test('envoie un message privé au destinataire demandé', () => {
 	const chat = setup();
+    players.set('socket-bob',{username:'Bob',room:'lobby'});
 
 	chat.send('privateMessage', {
 		to: 'socket-bob',
@@ -126,6 +130,7 @@ test('envoie un message privé au destinataire demandé', () => {
 
 test('refuse un message privé sans destinataire', () => {
 	const chat = setup();
+    players.set('socket-bob',{username:'Bob',room:'lobby'});
 
 	chat.send('privateMessage', {
 		message: 'Bonjour',
@@ -136,6 +141,7 @@ test('refuse un message privé sans destinataire', () => {
 
 test('refuse un message privé vide', () => {
 	const chat = setup();
+    players.set('socket-bob',{username:'Bob',room:'lobby'});
 
 	chat.send('privateMessage', {
 		to: 'socket-bob',
@@ -147,6 +153,7 @@ test('refuse un message privé vide', () => {
 
 test('limite les messages privés à 300 caractères', () => {
 	const chat = setup();
+    players.set('socket-bob',{username:'Bob',room:'lobby'});
 
 	chat.send('privateMessage', {
 		to: 'socket-bob',
@@ -158,6 +165,7 @@ test('limite les messages privés à 300 caractères', () => {
 
 test('envoie une émote au joueur ciblé', () => {
 	const chat = setup();
+    players.set('socket-bob',{username:'Bob',room:'lobby'});
 
 	chat.send('emote', {
 		to: 'socket-bob',
@@ -173,6 +181,7 @@ test('envoie une émote au joueur ciblé', () => {
 
 test('ignore une émote sans type', () => {
 	const chat = setup();
+    players.set('socket-bob',{username:'Bob',room:'lobby'});
 
 	chat.send('emote', {
 		to: 'socket-bob',
@@ -183,6 +192,7 @@ test('ignore une émote sans type', () => {
 
 test('ignore une émote sans destinataire', () => {
 	const chat = setup();
+    players.set('socket-bob',{username:'Bob',room:'lobby'});
 
 	chat.send('emote', {
 		type: 'wave',

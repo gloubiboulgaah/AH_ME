@@ -128,14 +128,12 @@ export default function GameMenu({
 							</button>
 						)}
 
-						{!isGuest && (
-							<button
-								className="btn btn-ghost"
-								type="button"
-								onClick={() => navigate('/servers')}>
-								Revenir à l'accueil (garder mon bureau)
-							</button>
-						)}
+						<button
+							className="btn btn-ghost"
+							type="button"
+							onClick={() => navigate('/servers')}>
+							Voir les salons
+						</button>
 
 						{!isGuest && !isOwner && server && (
 							<button

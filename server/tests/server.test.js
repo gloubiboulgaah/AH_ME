@@ -39,11 +39,11 @@ test('refuse une capacité inférieure à 2', async () => {
 	);
 });
 
-test('refuse une capacité supérieure à 50', async () => {
+test('refuse une capacité supérieure à 10', async () => {
 	await assert.rejects(
 		service.createServer({
 			name: 'Mon salon',
-			capacity: 51,
+			capacity: 11,
 			ownerId: 1,
 		}),
 		{ status: 400, code: 'INVALID_CAPACITY' }

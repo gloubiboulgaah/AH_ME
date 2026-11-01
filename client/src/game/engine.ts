@@ -246,6 +246,8 @@ export class GameEngine {
 		this.camera.lookAt(focus);
 	}
 
+	isDeskTargeted() { return Boolean(this.targetedDesk); }
+
 	private bindEvents() {
 		const onKeyDown = (e: KeyboardEvent) => {
 			// pas de deplacement quand on tape dans un input
@@ -256,6 +258,7 @@ export class GameEngine {
 			const key = e.key.toLowerCase();
 
 			if (key === 'e') {
+                if (e.repeat) return;
 				if (this.targetedDesk) this.onOpenDesk(this.targetedDesk);
 				return;
 			}
