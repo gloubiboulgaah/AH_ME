@@ -4,6 +4,8 @@
 
 Espace communautaire 3D isométrique multijoueur (inspiration Habbo). Projet Epitech W@C WebAcadémie 2025/2026.
 
+[-> Repo GitHub public <-](https://github.com/gloubiboulgaah/AH_ME)
+
 ## 📁 Structure
 
 ```
