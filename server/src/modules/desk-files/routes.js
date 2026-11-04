@@ -211,20 +211,27 @@ router.post(
 				return res.status(400).json({ error: 'fichier requis' });
 			}
 
-            const extension=path.extname(req.file.originalname).toLowerCase();
-            const fd=await fs.open(req.file.path,'r');
-            let bytes;
-            try {const buffer=Buffer.alloc(16);const read=await fd.read(buffer,0,16,0);bytes=buffer.subarray(0,read.bytesRead);}
-            finally {await fd.close();}
-            if(!upload.validSignature(extension,bytes)) {
-                await fs.unlink(req.file.path).catch(()=>{});
-                return res.status(400).json({error:'Le contenu du fichier ne correspond pas au format autorisé.'});
-            }
+			const extension = path.extname(req.file.originalname).toLowerCase();
+			const fd = await fs.open(req.file.path, 'r');
+			let bytes;
+			try {
+				const buffer = Buffer.alloc(16);
+				const read = await fd.read(buffer, 0, 16, 0);
+				bytes = buffer.subarray(0, read.bytesRead);
+			} finally {
+				await fd.close();
+			}
+			if (!upload.validSignature(extension, bytes)) {
+				await fs.unlink(req.file.path).catch(() => {});
+				return res.status(400).json({
+					error: 'Le contenu du fichier ne correspond pas au format autorisé.',
+				});
+			}
 
 			const desk = await deskFileService.getDesk(req.params.deskId);
 
 			if (!desk) {
-                if(req.file) await fs.unlink(req.file.path).catch(()=>{});
+				if (req.file) await fs.unlink(req.file.path).catch(() => {});
 				return res.status(404).json({ error: 'bureau introuvable' });
 			}
 
@@ -234,14 +241,14 @@ router.post(
 			);
 
 			if (!isMember) {
-                await fs.unlink(req.file.path).catch(()=>{});
+				await fs.unlink(req.file.path).catch(() => {});
 				return res.status(403).json({ error: 'accès refusé' });
 			}
 
 			const canUpload = await deskFileService.canUploadToDesk(desk.id);
 
 			if (!canUpload) {
-                await fs.unlink(req.file.path).catch(()=>{});
+				await fs.unlink(req.file.path).catch(() => {});
 				return res.status(400).json({
 					error: 'nombre maximum de fichiers atteint',
 				});
@@ -261,7 +268,7 @@ router.post(
 				file,
 			});
 		} catch (err) {
-            if(req.file?.path) await fs.unlink(req.file.path).catch(()=>{});
+			if (req.file?.path) await fs.unlink(req.file.path).catch(() => {});
 			next(err);
 		}
 	}

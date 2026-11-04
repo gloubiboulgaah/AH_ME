@@ -48,12 +48,22 @@ export default function JoinScreen({ onJoin }: JoinScreenProps) {
 		setIsSubmitting(true);
 
 		try {
-            const { available } = await api.guestUsernameAvailable(trimmedUsername);
-            if (!available) { setError('Ce pseudo est déjà utilisé.'); return; }
-            await onJoin(trimmedUsername);
-        } catch (error) {
-            setError(error instanceof Error ? error.message : 'Impossible de vérifier le pseudo.');
-        } finally { setIsSubmitting(false); }
+			const { available } =
+				await api.guestUsernameAvailable(trimmedUsername);
+			if (!available) {
+				setError('Ce pseudo est déjà utilisé.');
+				return;
+			}
+			await onJoin(trimmedUsername);
+		} catch (error) {
+			setError(
+				error instanceof Error
+					? error.message
+					: 'Impossible de vérifier le pseudo.'
+			);
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	const handleUsernameChange = (event: ChangeEvent<HTMLInputElement>) => {

@@ -37,11 +37,14 @@ function attach(io, socket) {
 	const user = socket.data.user;
 	const accountKey = user ? String(user.id) : null;
 	if (accountKey) {
-		if (!accountTabs.has(accountKey)) accountTabs.set(accountKey, new Set());
+		if (!accountTabs.has(accountKey))
+			accountTabs.set(accountKey, new Set());
 		accountTabs.get(accountKey).add(socket.id);
-		if (!accountControllers.has(accountKey)) accountControllers.set(accountKey, socket.id);
+		if (!accountControllers.has(accountKey))
+			accountControllers.set(accountKey, socket.id);
 	}
-	const isController = () => !accountKey || accountControllers.get(accountKey) === socket.id;
+	const isController = () =>
+		!accountKey || accountControllers.get(accountKey) === socket.id;
 
 	const init = async () => {
 		const saved = user ? await service.loadPlayer(user.id) : null;
@@ -64,7 +67,7 @@ function attach(io, socket) {
 			skin: avatar ? avatar.skin : null,
 			build: avatar ? avatar.build : null,
 			connected: Date.now(),
-            room: socket.data.room,
+			room: socket.data.room,
 		};
 		if (socket.connected === false) return;
 		if (!isController()) {
@@ -73,13 +76,23 @@ function attach(io, socket) {
 			// Un onglet secondaire ne cree jamais de deuxieme avatar.
 			socket.emit('avatarControl', { active: false });
 			socket.emit('init', { playerId: ownerId, player: owner || player });
-			socket.emit('currentPlayers', Array.from(players.values()).filter(p => p.room === socket.data.room));
+			socket.emit(
+				'currentPlayers',
+				Array.from(players.values()).filter(
+					(p) => p.room === socket.data.room
+				)
+			);
 			return;
 		}
 		players.set(socket.id, player);
 		socket.emit('avatarControl', { active: true });
 		socket.emit('init', { playerId: socket.id, player });
-		socket.emit('currentPlayers', Array.from(players.values()).filter(p => p.room === socket.data.room));
+		socket.emit(
+			'currentPlayers',
+			Array.from(players.values()).filter(
+				(p) => p.room === socket.data.room
+			)
+		);
 		socket.to(socket.data.room).emit('playerJoined', player);
 		if (user) await service.savePlayer(user.id, player);
 	};
@@ -99,9 +112,16 @@ function attach(io, socket) {
 		}
 
 		const coords = [data.x, data.y, data.z].map((value) => {
-			return typeof value === 'number' && Number.isFinite(value) ? value : NaN;
+			return typeof value === 'number' && Number.isFinite(value)
+				? value
+				: NaN;
 		});
-		if (coords.some((value) => !Number.isFinite(value) || Math.abs(value) > 10000)) return;
+		if (
+			coords.some(
+				(value) => !Number.isFinite(value) || Math.abs(value) > 10000
+			)
+		)
+			return;
 		[player.x, player.y, player.z] = coords;
 
 		io.to(socket.data.room).emit('playerMoved', {
@@ -134,15 +154,22 @@ function attach(io, socket) {
 						players.set(nextId, replacement);
 						players.delete(socket.id);
 						nextSocket.emit('avatarControl', { active: true });
-						nextSocket.emit('init', { playerId: nextId, player: replacement });
+						nextSocket.emit('init', {
+							playerId: nextId,
+							player: replacement,
+						});
 						io.to(socket.data.room).emit('playerLeft', socket.id);
-						io.to(socket.data.room).emit('playerJoined', replacement);
+						io.to(socket.data.room).emit(
+							'playerJoined',
+							replacement
+						);
 						return;
 					}
 				} else accountControllers.delete(accountKey);
 			}
 		}
-		if (players.delete(socket.id)) socket.to(socket.data.room).emit('playerLeft', socket.id);
+		if (players.delete(socket.id))
+			socket.to(socket.data.room).emit('playerLeft', socket.id);
 	});
 }
 

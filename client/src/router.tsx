@@ -18,9 +18,30 @@ export const router = createBrowserRouter([
 	{ path: '/register', element: <RegisterPage /> },
 	{ path: '/play', element: <PlayPage /> },
 	{ path: '/customize', element: <CustomizePage /> },
-	{ path: '/servers', element: <RequireGameEntry><ServersPage /></RequireGameEntry> },
-	{ path: '/servers/create', element: <RequireAccount><CreateServerPage /></RequireAccount> },
-	{ path: '/servers/settings', element: <RequireAccount><ServerSettingsPage /></RequireAccount> },
+	{
+		path: '/servers',
+		element: (
+			<RequireGameEntry>
+				<ServersPage />
+			</RequireGameEntry>
+		),
+	},
+	{
+		path: '/servers/create',
+		element: (
+			<RequireAccount>
+				<CreateServerPage />
+			</RequireAccount>
+		),
+	},
+	{
+		path: '/servers/settings',
+		element: (
+			<RequireAccount>
+				<ServerSettingsPage />
+			</RequireAccount>
+		),
+	},
 	{
 		path: '*',
 		element: (

@@ -23,9 +23,12 @@ export class InteractionManager {
 	isMenuOpen = false;
 
 	private cleanups: Array<() => void> = [];
-	private conversations = new Map<string, Array<{ sender: string; message: string; sent: boolean }>>();
+	private conversations = new Map<
+		string,
+		Array<{ sender: string; message: string; sent: boolean }>
+	>();
 	private unread = new Map<string, number>();
-    private userIdForSocket = new Map<string, number>();
+	private userIdForSocket = new Map<string, number>();
 	private inbox!: HTMLButtonElement;
 
 	constructor(engine: GameEngine) {
@@ -85,7 +88,7 @@ export class InteractionManager {
 			indicator.remove();
 			this.inbox.remove();
 			document.getElementById('message-dialog')?.remove();
-            document.getElementById('private-inbox-panel')?.remove();
+			document.getElementById('private-inbox-panel')?.remove();
 		});
 	}
 
@@ -100,7 +103,11 @@ export class InteractionManager {
 
 			if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
-			if (event.key.toLowerCase() === 'f' && !event.repeat && !this.isMenuOpen) {
+			if (
+				event.key.toLowerCase() === 'f' &&
+				!event.repeat &&
+				!this.isMenuOpen
+			) {
 				if (this.nearbyPlayers.length > 0) this.openMenu();
 			} else if (event.key === 'Escape' && this.isMenuOpen) {
 				this.closeMenu();
@@ -151,7 +158,7 @@ export class InteractionManager {
 	}
 
 	private updateIndicator() {
-		if (this.nearbyPlayers.length > 0 && !this.isMenuOpen ) {
+		if (this.nearbyPlayers.length > 0 && !this.isMenuOpen) {
 			this.interactionIndicator.classList.remove('hidden');
 
 			const count = this.nearbyPlayers.length;
@@ -329,11 +336,19 @@ export class InteractionManager {
 		dialog.dataset.playerId = player.id;
 		document.body.appendChild(dialog);
 		this.unread.delete(player.id);
-        const peerId=this.userIdForSocket.get(player.id);
-        if(peerId) this.engine.network?.socket?.emit('privateMessageRead',{userId:peerId});
+		const peerId = this.userIdForSocket.get(player.id);
+		if (peerId)
+			this.engine.network?.socket?.emit('privateMessageRead', {
+				userId: peerId,
+			});
 		this.updateInbox();
 		for (const entry of this.conversations.get(player.id) ?? []) {
-			this.renderMessage(player.id, entry.sender, entry.message, entry.sent);
+			this.renderMessage(
+				player.id,
+				entry.sender,
+				entry.message,
+				entry.sent
+			);
 		}
 
 		dialog
@@ -352,7 +367,9 @@ export class InteractionManager {
 			if (!message || !this.engine.network?.socket) return;
 
 			this.engine.network.socket.emit('privateMessage', {
-                toUserId: player.id.startsWith('offline:') ? Number(player.id.split(':')[1]) : this.userIdForSocket.get(player.id),
+				toUserId: player.id.startsWith('offline:')
+					? Number(player.id.split(':')[1])
+					: this.userIdForSocket.get(player.id),
 				to: player.id,
 				message,
 			});
@@ -387,7 +404,12 @@ export class InteractionManager {
 		this.renderMessage(playerId, sender, message, isSent);
 	}
 
-	private renderMessage(playerId: string, sender: string, message: string, isSent: boolean) {
+	private renderMessage(
+		playerId: string,
+		sender: string,
+		message: string,
+		isSent: boolean
+	) {
 		const history = document.getElementById(`message-history-${playerId}`);
 
 		if (!history) return;
@@ -428,93 +450,154 @@ export class InteractionManager {
 		const mesh = this.engine.network?.otherPlayers.get(data.from);
 		const username = data.fromUsername || mesh?.userData.username || '?';
 
-		if(data.fromUserId) this.userIdForSocket.set(data.from,data.fromUserId);
-        this.addMessageToHistory(data.from, username, data.message, false);
+		if (data.fromUserId)
+			this.userIdForSocket.set(data.from, data.fromUserId);
+		this.addMessageToHistory(data.from, username, data.message, false);
 
 		const dialog = document.getElementById('message-dialog');
 		if (dialog?.dataset.playerId !== data.from) {
 			this.unread.set(data.from, (this.unread.get(data.from) ?? 0) + 1);
 			this.updateInbox();
-			this.showNotification(`${username} vous a envoyé un message`, data.from);
+			this.showNotification(
+				`${username} vous a envoyé un message`,
+				data.from
+			);
 		}
 	}
 
+	receivePrivateHistory(
+		entries: Array<{
+			id: number;
+			sender_id: number;
+			recipient_id: number;
+			body: string;
+			created_at: string;
+			read_at: string | null;
+			sender_username: string;
+			recipient_username: string;
+		}>
+	) {
+		// garde les nouveaux messages reçus pendant le chargement
+		const current = this.engine.network?.otherPlayers;
+		for (const entry of entries) {
+			const isMine = Boolean(
+				this.engine.network &&
+				entry.sender_username === this.engine.network?.networkUsername()
+			);
+			const peerId = isMine ? entry.recipient_id : entry.sender_id;
+			const peerName = isMine
+				? entry.recipient_username
+				: entry.sender_username;
+			const online = [...(current?.entries() ?? [])].find(
+				([, mesh]) => mesh.userData.username === peerName
+			)?.[0];
+			const key = online ?? `offline:${peerId}`;
+			if (online) this.userIdForSocket.set(online, peerId);
+			const history = this.conversations.get(key) ?? [];
+			if (
+				!history.some(
+					(row) =>
+						row.message === entry.body &&
+						row.sender === (isMine ? 'Vous' : peerName)
+				)
+			) {
+				history.push({
+					sender: isMine ? 'Vous' : peerName,
+					message: entry.body,
+					sent: isMine,
+				});
+				this.conversations.set(key, history.slice(-200));
+			}
+			if (!isMine && !entry.read_at)
+				this.unread.set(key, (this.unread.get(key) ?? 0) + 1);
+		}
+		this.updateInbox();
+	}
 
-    receivePrivateHistory(entries: Array<{id:number;sender_id:number;recipient_id:number;body:string;created_at:string;read_at:string|null;sender_username:string;recipient_username:string}>) {
-        // garde les nouveaux messages reçus pendant le chargement
-        const current = this.engine.network?.otherPlayers;
-        for (const entry of entries) {
-            const isMine = Boolean(this.engine.network && entry.sender_username === this.engine.network?.networkUsername());
-            const peerId = isMine ? entry.recipient_id : entry.sender_id;
-            const peerName = isMine ? entry.recipient_username : entry.sender_username;
-            const online = [...(current?.entries() ?? [])].find(([,mesh]) => mesh.userData.username === peerName)?.[0];
-            const key = online ?? `offline:${peerId}`;
-            if (online) this.userIdForSocket.set(online,peerId);
-            const history = this.conversations.get(key) ?? [];
-            if (!history.some(row => row.message === entry.body && row.sender === (isMine?'Vous':peerName))) {
-                history.push({sender:isMine?'Vous':peerName,message:entry.body,sent:isMine});
-                this.conversations.set(key,history.slice(-200));
-            }
-            if (!isMine && !entry.read_at) this.unread.set(key,(this.unread.get(key) ?? 0)+1);
-        }
-        this.updateInbox();
-    }
-
-    confirmPrivateMessage(_data: {to:string;message:string}) { /* Message déjà affiché à l'envoi. */ }
+	confirmPrivateMessage(_data: { to: string; message: string }) {
+		/* Message déjà affiché à l'envoi. */
+	}
 
 	private escapeHtml(value: string) {
-		return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
+		return value.replace(
+			/[&<>"']/g,
+			(char) =>
+				({
+					'&': '&amp;',
+					'<': '&lt;',
+					'>': '&gt;',
+					'"': '&quot;',
+					"'": '&#39;',
+				})[char] ?? char
+		);
 	}
 
 	private updateInbox() {
-		const count = [...this.unread.values()].reduce((sum, value) => sum + value, 0);
+		const count = [...this.unread.values()].reduce(
+			(sum, value) => sum + value,
+			0
+		);
 		this.inbox.textContent = count ? `Messages (${count})` : 'Messages';
 	}
 
 	private openInbox(playerId?: string) {
-        const ids = [...this.conversations.keys()];
-        if (playerId) {
-            const mesh = this.engine.network?.otherPlayers.get(playerId);
-            const entries = this.conversations.get(playerId) ?? [];
-            const name = mesh?.userData.username || entries.find((entry) => !entry.sent)?.sender || 'Joueur';
-            this.openMessageDialog({ id: playerId, mesh: mesh as PlayerMesh, username: name, distance: 0 });
-            return;
-        }
-        document.getElementById('private-inbox-panel')?.remove();
-        const panel = document.createElement('section');
-        panel.id = 'private-inbox-panel';
-        panel.className = 'panel private-inbox-panel';
-        panel.setAttribute('role', 'dialog');
-        panel.setAttribute('aria-label', 'Conversations privées');
-        const header = document.createElement('div');
-        header.className = 'private-inbox-header';
-        const title = document.createElement('h3');
-        title.textContent = 'Messages privés';
-        const close = document.createElement('button');
-        close.type = 'button';
-        close.className = 'btn';
-        close.textContent = 'Fermer';
-        close.addEventListener('click', () => panel.remove());
-        header.append(title, close);
-        panel.appendChild(header);
-        if (!ids.length) {
-            const empty = document.createElement('p');
-            empty.textContent = 'Aucune conversation pour le moment.';
-            panel.appendChild(empty);
-        }
-        for (const id of ids) {
-            const entries = this.conversations.get(id) ?? [];
-            const mesh = this.engine.network?.otherPlayers.get(id);
-            const name = mesh?.userData.username || entries.find((entry) => !entry.sent)?.sender || 'Joueur';
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'btn private-inbox-conversation';
-            button.textContent = `${name}${this.unread.get(id) ? ` (${this.unread.get(id)} non lus)` : ''}`;
-            button.addEventListener('click', () => { panel.remove(); this.openInbox(id); });
-            panel.appendChild(button);
-        }
-        document.body.appendChild(panel);
-    }
+		const ids = [...this.conversations.keys()];
+		if (playerId) {
+			const mesh = this.engine.network?.otherPlayers.get(playerId);
+			const entries = this.conversations.get(playerId) ?? [];
+			const name =
+				mesh?.userData.username ||
+				entries.find((entry) => !entry.sent)?.sender ||
+				'Joueur';
+			this.openMessageDialog({
+				id: playerId,
+				mesh: mesh as PlayerMesh,
+				username: name,
+				distance: 0,
+			});
+			return;
+		}
+		document.getElementById('private-inbox-panel')?.remove();
+		const panel = document.createElement('section');
+		panel.id = 'private-inbox-panel';
+		panel.className = 'panel private-inbox-panel';
+		panel.setAttribute('role', 'dialog');
+		panel.setAttribute('aria-label', 'Conversations privées');
+		const header = document.createElement('div');
+		header.className = 'private-inbox-header';
+		const title = document.createElement('h3');
+		title.textContent = 'Messages privés';
+		const close = document.createElement('button');
+		close.type = 'button';
+		close.className = 'btn';
+		close.textContent = 'Fermer';
+		close.addEventListener('click', () => panel.remove());
+		header.append(title, close);
+		panel.appendChild(header);
+		if (!ids.length) {
+			const empty = document.createElement('p');
+			empty.textContent = 'Aucune conversation pour le moment.';
+			panel.appendChild(empty);
+		}
+		for (const id of ids) {
+			const entries = this.conversations.get(id) ?? [];
+			const mesh = this.engine.network?.otherPlayers.get(id);
+			const name =
+				mesh?.userData.username ||
+				entries.find((entry) => !entry.sent)?.sender ||
+				'Joueur';
+			const button = document.createElement('button');
+			button.type = 'button';
+			button.className = 'btn private-inbox-conversation';
+			button.textContent = `${name}${this.unread.get(id) ? ` (${this.unread.get(id)} non lus)` : ''}`;
+			button.addEventListener('click', () => {
+				panel.remove();
+				this.openInbox(id);
+			});
+			panel.appendChild(button);
+		}
+		document.body.appendChild(panel);
+	}
 
 	private showNotification(text: string, playerId: string) {
 		const notification = document.createElement('button');

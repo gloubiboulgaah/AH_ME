@@ -41,7 +41,9 @@ function attach(io, socket) {
 
 			if (released) {
 				socket.data.deskSlot = null;
-				io.to(socket.data.room).emit('deskReleased', { slotIndex: released.slotIndex });
+				io.to(socket.data.room).emit('deskReleased', {
+					slotIndex: released.slotIndex,
+				});
 			}
 		} catch (err) {
 			console.error('desk leave:', err.message);

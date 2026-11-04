@@ -15,7 +15,7 @@ const apiRoutes = require('./modules/api/routes');
 const world = require('./modules/world/socket');
 const chat = require('./modules/chat/socket');
 const desk = require('./modules/desk/socket');
-const {currentRoom} = require('./modules/world/access');
+const { currentRoom } = require('./modules/world/access');
 const db = require('./db/pool');
 const serverRoutes = require('./modules/server/routes');
 const deskFileRoutes = require('./modules/desk-files/routes');
@@ -71,9 +71,10 @@ io.use(async (socket, next) => {
 		const cookies = cookie.parse(socket.handshake.headers.cookie || '');
 
 		const sessionUser = cookies.sid
-            ? await authService.getSessionUser(cookies.sid)
-            : null;
-        if (cookies.sid && !sessionUser) return next(new Error('Session invalide'));
+			? await authService.getSessionUser(cookies.sid)
+			: null;
+		if (cookies.sid && !sessionUser)
+			return next(new Error('Session invalide'));
 
 		const rawGuestUsername = socket.handshake.auth?.guestUsername;
 
@@ -85,7 +86,7 @@ io.use(async (socket, next) => {
 
 		socket.data.user = sessionUser;
 		socket.data.guestUsername =
-            !sessionUser && isValidGuestUsername ? guestUsername : null;
+			!sessionUser && isValidGuestUsername ? guestUsername : null;
 
 		socket.data.username =
 			sessionUser?.username ||
@@ -104,19 +105,43 @@ io.use(async (socket, next) => {
 });
 
 io.on('connection', async (socket) => {
-  try {
-    if(!socket.data.user) {
-      const username=socket.data.guestUsername;
-      if(!username) {socket.emit('accessDenied','Pseudo invité invalide');socket.disconnect(true);return;}
-      const registered=await db.query('SELECT 1 FROM users WHERE lower(username)=lower($1) LIMIT 1',[username]);
-      const duplicate=[...io.sockets.sockets.values()].some(other=>other.id!==socket.id && other.data.username?.toLowerCase()===username.toLowerCase());
-      if(registered.rows.length||duplicate) {socket.emit('accessDenied','Ce pseudo est déjà utilisé');socket.disconnect(true);return;}
-    }
-    const room = await currentRoom(socket.data.user);
-    if (!room) { socket.emit('accessDenied', 'Accès au salon refusé'); socket.disconnect(true); return; }
-    socket.data.room = room;
-    await socket.join(room);
-  } catch (error) { console.error('room access:',error.message); socket.disconnect(true); return; }
+	try {
+		if (!socket.data.user) {
+			const username = socket.data.guestUsername;
+			if (!username) {
+				socket.emit('accessDenied', 'Pseudo invité invalide');
+				socket.disconnect(true);
+				return;
+			}
+			const registered = await db.query(
+				'SELECT 1 FROM users WHERE lower(username)=lower($1) LIMIT 1',
+				[username]
+			);
+			const duplicate = [...io.sockets.sockets.values()].some(
+				(other) =>
+					other.id !== socket.id &&
+					other.data.username?.toLowerCase() ===
+						username.toLowerCase()
+			);
+			if (registered.rows.length || duplicate) {
+				socket.emit('accessDenied', 'Ce pseudo est déjà utilisé');
+				socket.disconnect(true);
+				return;
+			}
+		}
+		const room = await currentRoom(socket.data.user);
+		if (!room) {
+			socket.emit('accessDenied', 'Accès au salon refusé');
+			socket.disconnect(true);
+			return;
+		}
+		socket.data.room = room;
+		await socket.join(room);
+	} catch (error) {
+		console.error('room access:', error.message);
+		socket.disconnect(true);
+		return;
+	}
 
 	console.log(
 		`[${new Date().toISOString()}] connexion: ${

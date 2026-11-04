@@ -20,8 +20,14 @@ async function setup(user = { id: 10 }) {
 		emit(event, payload) {
 			emitted.push({ event, payload });
 		},
-		to(room) { return {emit(event,payload){broadcast.push({event,payload});}}; },
-        broadcast: {
+		to(room) {
+			return {
+				emit(event, payload) {
+					broadcast.push({ event, payload });
+				},
+			};
+		},
+		broadcast: {
 			emit(event, payload) {
 				broadcast.push({ event, payload });
 			},
@@ -29,7 +35,13 @@ async function setup(user = { id: 10 }) {
 	};
 
 	const io = {
-        to(room){return {emit(event,payload){global.push({event,payload});}};},
+		to(room) {
+			return {
+				emit(event, payload) {
+					global.push({ event, payload });
+				},
+			};
+		},
 		emit(event, payload) {
 			global.push({ event, payload });
 		},

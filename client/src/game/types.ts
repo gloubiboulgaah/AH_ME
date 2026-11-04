@@ -25,7 +25,7 @@ export interface ChatMessage {
 }
 
 export interface PrivateMessage {
-    fromUserId?: number;
+	fromUserId?: number;
 	from: string;
 	fromUsername: string;
 	message: string;

@@ -1,10 +1,7 @@
+/** @format */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-	isAvatarAppearance,
-	loadAvatar,
-	saveAvatar,
-} from './avatar';
+import { isAvatarAppearance, loadAvatar, saveAvatar } from './avatar';
 
 describe('Personnalisation de l’avatar', () => {
 	afterEach(() => {

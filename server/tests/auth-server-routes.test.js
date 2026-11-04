@@ -205,30 +205,30 @@ test('déconnecte l’utilisateur et efface le cookie', async () => {
 });
 
 test('autorise la consultation du salon public sans connexion', async () => {
-    await withMocks(async (stub) => {
-        stub(authService, 'getSessionUser', async () => null);
-        stub(serverService, 'getCurrentServer', async () => ({
-            ...currentServer,
-            visibility: 'public',
-        }));
+	await withMocks(async (stub) => {
+		stub(authService, 'getSessionUser', async () => null);
+		stub(serverService, 'getCurrentServer', async () => ({
+			...currentServer,
+			visibility: 'public',
+		}));
 
-        const result = await request('GET', '/servers/current');
+		const result = await request('GET', '/servers/current');
 
-        assert.equal(result.status, 200);
-        assert.equal(result.body.server.id, currentServer.id);
-    });
+		assert.equal(result.status, 200);
+		assert.equal(result.body.server.id, currentServer.id);
+	});
 });
 
 test('masque le salon privé aux visiteurs sans connexion', async () => {
-    await withMocks(async (stub) => {
-        stub(authService, 'getSessionUser', async () => null);
-        stub(serverService, 'getCurrentServer', async () => currentServer);
+	await withMocks(async (stub) => {
+		stub(authService, 'getSessionUser', async () => null);
+		stub(serverService, 'getCurrentServer', async () => currentServer);
 
-        const result = await request('GET', '/servers/current');
+		const result = await request('GET', '/servers/current');
 
-        assert.equal(result.status, 200);
-        assert.equal(result.body.server, null);
-    });
+		assert.equal(result.status, 200);
+		assert.equal(result.body.server, null);
+	});
 });
 
 test('retourne le serveur actif avec ses membres', async () => {
@@ -258,7 +258,11 @@ test('compte zéro joueur quand le salon est vide', async () => {
 });
 
 test('compte les avatars actifs, y compris les invités, sans compter les autres salons', async () => {
-	const addedIds = ['test-online-member', 'test-online-guest', 'test-online-other'];
+	const addedIds = [
+		'test-online-member',
+		'test-online-guest',
+		'test-online-other',
+	];
 	players.set(addedIds[0], { room: 'server:3', userId: 10 });
 	players.set(addedIds[1], { room: 'server:3', guest: true });
 	players.set(addedIds[2], { room: 'server:99', guest: true });
